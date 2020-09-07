@@ -265,7 +265,8 @@
 		"webpack-cli": "3.3.12",
 		"websocket": "1.0.31",
 		"ws": "7.3.1",
-		"xev": "2.0.1"
+		"xev": "2.0.1",
+		"yenv": "2.1.1"
 	},
 	"devDependencies": {
 		"@types/chai": "4.2.11",
