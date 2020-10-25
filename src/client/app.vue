@@ -33,7 +33,7 @@
 
 	<x-sidebar ref="nav" @change-view-mode="calcHeaderWidth"/>
 
-	<div class="contents" ref="contents" :class="{ wallpaper }">
+	<div class="contents" ref="contents" :class="{ wallpaper, full: $store.state.fullView }">
 		<main ref="main">
 			<div class="content">
 				<transition :name="$store.state.device.animation ? 'page' : ''" mode="out-in" @enter="onTransition">
@@ -328,6 +328,10 @@ export default Vue.extend({
 		},
 
 		async onNotification(notification) {
+			const t = this.$store.state.i.includingNotificationTypes;
+			if (!!t && !t.includes(notification.type)) {
+				return;
+			}
 			if (document.visibilityState === 'visible') {
 				this.$root.stream.send('readNotification', {
 					id: notification.id
@@ -545,6 +549,18 @@ export default Vue.extend({
 		&.wallpaper {
 			background: var(--wallpaperOverlay);
 			backdrop-filter: blur(4px);
+		}
+
+		&.full {
+			width: 100%;
+
+			> main {
+				width: 100%;
+			}
+
+			> .widgets {
+				display: none;
+			}
 		}
 
 		> main {
