@@ -1,16 +1,18 @@
-import Vue, { VNode } from 'vue';
+import { VNode, defineComponent, h } from 'vue';
 import { MfmForest } from '../../mfm/prelude';
 import { parse, parsePlain } from '../../mfm/parse';
 import MkUrl from './url.vue';
 import MkLink from './link.vue';
 import MkMention from './mention.vue';
+import MkEmoji from './emoji.vue';
 import { concat } from '../../prelude/array';
 import MkFormula from './formula.vue';
 import MkCode from './code.vue';
 import MkGoogle from './google.vue';
-import { host } from '../config';
+import MkA from './ui/a.vue';
+import { host } from '@/config';
 
-export default Vue.component('misskey-flavored-markdown', {
+export default defineComponent({
 	props: {
 		text: {
 			type: String,
@@ -41,7 +43,7 @@ export default Vue.component('misskey-flavored-markdown', {
 		},
 	},
 
-	render(createElement) {
+	render() {
 		if (this.text == null || this.text == '') return;
 
 		const ast = (this.plain ? parsePlain : parse)(this.text);
@@ -53,233 +55,193 @@ export default Vue.component('misskey-flavored-markdown', {
 
 					if (!this.plain) {
 						const x = text.split('\n')
-							.map(t => t == '' ? [createElement('br')] : [this._v(t), createElement('br')]); // NOTE: this._vはHACK SEE: https://github.com/syuilo/misskey/pull/6399#issuecomment-632820283
+							.map(t => t == '' ? [h('br')] : [t, h('br')]);
 						x[x.length - 1].pop();
 						return x;
 					} else {
-						return [this._v(text.replace(/\n/g, ' '))];
+						return [text.replace(/\n/g, ' ')];
 					}
 				}
 
 				case 'bold': {
-					return [createElement('b', genEl(token.children))];
+					return [h('b', genEl(token.children))];
 				}
 
 				case 'strike': {
-					return [createElement('del', genEl(token.children))];
+					return [h('del', genEl(token.children))];
 				}
 
 				case 'italic': {
-					return (createElement as any)('i', {
-						attrs: {
-							style: 'font-style: oblique;'
-						},
+					return h('i', {
+						style: 'font-style: oblique;'
 					}, genEl(token.children));
 				}
 
-				case 'big': {
-					return (createElement as any)('strong', {
-						attrs: {
-							style: `display: inline-block; font-size: 150%;`
-						},
-						directives: [this.$store.state.device.animatedMfm ? {
-							name: 'animate-css',
-							value: { classes: 'tada', iteration: 'infinite' }
-						}: {}]
+				case 'fn': {
+					// TODO: CSSを文字列で組み立てていくと token.node.props.args.~~~ 経由でCSSインジェクションできるのでよしなにやる
+					let style;
+					switch (token.node.props.name) {
+						case 'tada': {
+							style = `font-size: 150%;` + (this.$store.state.device.animatedMfm ? 'animation: tada 1s linear infinite both;' : '');
+							break;
+						}
+						case 'jelly': {
+							const speed = token.node.props.args.speed || '1s';
+							style = (this.$store.state.device.animatedMfm ? `animation: mfm-rubberBand ${speed} linear infinite both;` : '');
+							break;
+						}
+						case 'twitch': {
+							const speed = token.node.props.args.speed || '0.5s';
+							style = this.$store.state.device.animatedMfm ? `animation: mfm-twitch ${speed} ease infinite;` : '';
+							break;
+						}
+						case 'shake': {
+							const speed = token.node.props.args.speed || '0.5s';
+							style = this.$store.state.device.animatedMfm ? `animation: mfm-shake ${speed} ease infinite;` : '';
+							break;
+						}
+						case 'spin': {
+							const direction =
+								token.node.props.args.left ? 'reverse' :
+								token.node.props.args.alternate ? 'alternate' :
+								'normal';
+							const anime =
+								token.node.props.args.x ? 'mfm-spinX' :
+								token.node.props.args.y ? 'mfm-spinY' :
+								'mfm-spin';
+							const speed = token.node.props.args.speed || '1.5s';
+							style = this.$store.state.device.animatedMfm ? `animation: ${anime} ${speed} linear infinite; animation-direction: ${direction};` : '';
+							break;
+						}
+						case 'jump': {
+							style = this.$store.state.device.animatedMfm ? 'animation: mfm-jump 0.75s linear infinite;' : '';
+							break;
+						}
+						case 'bounce': {
+							style = this.$store.state.device.animatedMfm ? 'animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom;' : '';
+							break;
+						}
+						case 'flip': {
+							const transform =
+								(token.node.props.args.h && token.node.props.args.v) ? 'scale(-1, -1)' :
+								token.node.props.args.v ? 'scaleY(-1)' :
+								'scaleX(-1)';
+							style = `transform: ${transform};`;
+							break;
+						}
+					}
+					return h('span', {
+						style: 'display: inline-block;' + style,
 					}, genEl(token.children));
 				}
 
 				case 'small': {
-					return [createElement('small', {
-						attrs: {
-							style: 'opacity: 0.7;'
-						},
+					return [h('small', {
+						style: 'opacity: 0.7;'
 					}, genEl(token.children))];
 				}
 
 				case 'center': {
-					return [createElement('div', {
-						attrs: {
-							style: 'text-align:center;'
-						}
+					return [h('div', {
+						style: 'text-align:center;'
 					}, genEl(token.children))];
 				}
 
-				case 'motion': {
-					return (createElement as any)('span', {
-						attrs: {
-							style: 'display: inline-block;'
-						},
-						directives: [this.$store.state.device.animatedMfm ? {
-							name: 'animate-css',
-							value: { classes: 'rubberBand', iteration: 'infinite' }
-						} : {}]
-					}, genEl(token.children));
-				}
-
-				case 'spin': {
-					const direction =
-						token.node.props.attr == 'left' ? 'reverse' :
-						token.node.props.attr == 'alternate' ? 'alternate' :
-						'normal';
-					const style = this.$store.state.device.animatedMfm
-						? `animation: spin 1.5s linear infinite; animation-direction: ${direction};` : '';
-					return (createElement as any)('span', {
-						attrs: {
-							style: 'display: inline-block;' + style
-						},
-					}, genEl(token.children));
-				}
-
-				case 'jump': {
-					return (createElement as any)('span', {
-						attrs: {
-							style: this.$store.state.device.animatedMfm ? 'display: inline-block; animation: jump 0.75s linear infinite;' : 'display: inline-block;'
-						},
-					}, genEl(token.children));
-				}
-
-				case 'flip': {
-					return (createElement as any)('span', {
-						attrs: {
-							style: 'display: inline-block; transform: scaleX(-1);'
-						},
-					}, genEl(token.children));
-				}
-
 				case 'url': {
-					return [createElement(MkUrl, {
+					return [h(MkUrl, {
 						key: Math.random(),
-						props: {
-							url: token.node.props.url,
-							rel: 'nofollow noopener',
-						},
+						url: token.node.props.url,
+						rel: 'nofollow noopener',
 					})];
 				}
 
 				case 'link': {
-					return [createElement(MkLink, {
+					return [h(MkLink, {
 						key: Math.random(),
-						props: {
-							url: token.node.props.url,
-							rel: 'nofollow noopener',
-						},
+						url: token.node.props.url,
+						rel: 'nofollow noopener',
 					}, genEl(token.children))];
 				}
 
 				case 'mention': {
-					return [createElement(MkMention, {
+					return [h(MkMention, {
 						key: Math.random(),
-						props: {
-							host: (token.node.props.host == null && this.author && this.author.host != null ? this.author.host : token.node.props.host) || host,
-							username: token.node.props.username
-						}
+						host: (token.node.props.host == null && this.author && this.author.host != null ? this.author.host : token.node.props.host) || host,
+						username: token.node.props.username
 					})];
 				}
 
 				case 'hashtag': {
-					return [createElement('router-link', {
+					return [h(MkA, {
 						key: Math.random(),
-						attrs: {
-							to: this.isNote ? `/tags/${encodeURIComponent(token.node.props.hashtag)}` : `/explore/tags/${encodeURIComponent(token.node.props.hashtag)}`,
-							style: 'color:var(--hashtag);'
-						}
+						to: this.isNote ? `/tags/${encodeURIComponent(token.node.props.hashtag)}` : `/explore/tags/${encodeURIComponent(token.node.props.hashtag)}`,
+						style: 'color:var(--hashtag);'
 					}, `#${token.node.props.hashtag}`)];
 				}
 
 				case 'blockCode': {
-					return [createElement(MkCode, {
+					return [h(MkCode, {
 						key: Math.random(),
-						props: {
-							code: token.node.props.code,
-							lang: token.node.props.lang,
-						}
+						code: token.node.props.code,
+						lang: token.node.props.lang,
 					})];
 				}
 
 				case 'inlineCode': {
-					return [createElement(MkCode, {
+					return [h(MkCode, {
 						key: Math.random(),
-						props: {
-							code: token.node.props.code,
-							lang: token.node.props.lang,
-							inline: true
-						}
+						code: token.node.props.code,
+						lang: token.node.props.lang,
+						inline: true
 					})];
 				}
 
 				case 'quote': {
-					if (this.shouldBreak) {
-						return [createElement('div', {
-							attrs: {
-								class: 'quote'
-							}
+					if (!this.nowrap) {
+						return [h('div', {
+							class: 'quote'
 						}, genEl(token.children))];
 					} else {
-						return [createElement('span', {
-							attrs: {
-								class: 'quote'
-							}
+						return [h('span', {
+							class: 'quote'
 						}, genEl(token.children))];
 					}
 				}
 
-				case 'title': {
-					return [createElement('div', {
-						attrs: {
-							class: 'title'
-						}
-					}, genEl(token.children))];
-				}
-
 				case 'emoji': {
-					return [createElement('mk-emoji', {
+					return [h(MkEmoji, {
 						key: Math.random(),
-						attrs: {
-							emoji: token.node.props.emoji,
-							name: token.node.props.name
-						},
-						props: {
-							customEmojis: this.customEmojis,
-							normal: this.plain
-						}
+						emoji: token.node.props.name ? `:${token.node.props.name}:` : token.node.props.emoji,
+						customEmojis: this.customEmojis,
+						normal: this.plain
 					})];
 				}
 
 				case 'mathInline': {
-					//const MkFormula = () => import('./formula.vue').then(m => m.default);
-					return [createElement(MkFormula, {
+					return [h(MkFormula, {
 						key: Math.random(),
-						props: {
-							formula: token.node.props.formula,
-							block: false
-						}
+						formula: token.node.props.formula,
+						block: false
 					})];
 				}
 
 				case 'mathBlock': {
-					//const MkFormula = () => import('./formula.vue').then(m => m.default);
-					return [createElement(MkFormula, {
+					return [h(MkFormula, {
 						key: Math.random(),
-						props: {
-							formula: token.node.props.formula,
-							block: true
-						}
+						formula: token.node.props.formula,
+						block: true
 					})];
 				}
 
 				case 'search': {
-					//const MkGoogle = () => import('./google.vue').then(m => m.default);
-					return [createElement(MkGoogle, {
+					return [h(MkGoogle, {
 						key: Math.random(),
-						props: {
-							q: token.node.props.query
-						}
+						q: token.node.props.query
 					})];
 				}
 
 				default: {
-					console.log('unknown ast type:', token.node.type);
+					console.error('unrecognized ast type:', token.node.type);
 
 					return [];
 				}
@@ -287,6 +249,6 @@ export default Vue.component('misskey-flavored-markdown', {
 		}));
 
 		// Parse ast to DOM
-		return createElement('span', genEl(ast));
+		return h('span', genEl(ast));
 	}
 });

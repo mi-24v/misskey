@@ -1,24 +1,24 @@
 <template>
-<div class="cxiknjgy" :class="{ autoMargin }">
+<div class="cxiknjgy">
 	<slot :items="items"></slot>
 	<div class="empty" v-if="empty" key="_empty_">
 		<slot name="empty"></slot>
 	</div>
 	<div class="more" v-show="more" key="_more_">
-		<mk-button class="button" ref="loadMore" :disabled="moreFetching" :style="{ cursor: moreFetching ? 'wait' : 'pointer' }" primary>
+		<MkButton class="button" v-appear="$store.state.device.enableInfiniteScroll ? fetchMore : null" @click="fetchMore" :disabled="moreFetching" :style="{ cursor: moreFetching ? 'wait' : 'pointer' }" primary>
 			<template v-if="!moreFetching">{{ $t('loadMore') }}</template>
-			<template v-if="moreFetching"><mk-loading inline/></template>
-		</mk-button>
+			<template v-if="moreFetching"><MkLoading inline/></template>
+		</MkButton>
 	</div>
 </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import MkButton from './button.vue';
-import paging from '../../scripts/paging';
+import paging from '@/scripts/paging';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		MkButton
 	},
@@ -31,24 +31,12 @@ export default Vue.extend({
 		pagination: {
 			required: true
 		},
-		autoMargin: {
-			required: false,
-			default: true
-		}
 	},
 });
 </script>
 
 <style lang="scss" scoped>
 .cxiknjgy {
-	&.autoMargin > *:not(:last-child) {
-		margin-bottom: 16px;
-
-		@media (max-width: 500px) {
-			margin-bottom: 8px;
-		}
-	}
-
 	> .more > .button {
 		margin-left: auto;
 		margin-right: auto;

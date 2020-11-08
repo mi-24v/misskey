@@ -1,10 +1,11 @@
 <template>
-<mk-emoji :emoji="reaction.startsWith(':') ? null : reaction" :name="reaction.startsWith(':') ? reaction.substr(1, reaction.length - 2) : null" :customEmojis="customEmojis" :is-reaction="true" :normal="true" :no-style="noStyle"/>
+<MkEmoji :emoji="reaction" :custom-emojis="customEmojis" :is-reaction="true" :normal="true" :no-style="noStyle"/>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	props: {
 		reaction: {
 			type: String,

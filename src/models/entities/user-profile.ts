@@ -109,11 +109,6 @@ export class UserProfile {
 	@Column('boolean', {
 		default: false,
 	})
-	public autoWatch: boolean;
-
-	@Column('boolean', {
-		default: false,
-	})
 	public autoAcceptFollowed: boolean;
 
 	@Column('boolean', {
@@ -162,9 +157,9 @@ export class UserProfile {
 	@Column('enum', {
 		enum: notificationTypes,
 		array: true,
-		nullable: true,
+		default: [],
 	})
-	public includingNotificationTypes: typeof notificationTypes[number][] | null;
+	public mutingNotificationTypes: typeof notificationTypes[number][];
 
 	//#region Denormalized fields
 	@Index()

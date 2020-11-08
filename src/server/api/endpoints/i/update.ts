@@ -120,13 +120,6 @@ export const meta = {
 			}
 		},
 
-		autoWatch: {
-			validator: $.optional.bool,
-			desc: {
-				'ja-JP': '投稿の自動ウォッチをするか否か'
-			}
-		},
-
 		injectFeaturedNote: {
 			validator: $.optional.bool,
 		},
@@ -149,7 +142,7 @@ export const meta = {
 			validator: $.optional.arr($.arr($.str))
 		},
 
-		includingNotificationTypes: {
+		mutingNotificationTypes: {
 			validator: $.optional.arr($.str.or(notificationTypes as unknown as string[]))
 		},
 	},
@@ -206,13 +199,12 @@ export default define(meta, async (ps, user, token) => {
 		profileUpdates.mutedWords = ps.mutedWords;
 		profileUpdates.enableWordMute = ps.mutedWords.length > 0;
 	}
-	if (ps.includingNotificationTypes !== undefined) profileUpdates.includingNotificationTypes = ps.includingNotificationTypes as typeof notificationTypes[number][];
+	if (ps.mutingNotificationTypes !== undefined) profileUpdates.mutingNotificationTypes = ps.mutingNotificationTypes as typeof notificationTypes[number][];
 	if (typeof ps.isLocked === 'boolean') updates.isLocked = ps.isLocked;
 	if (typeof ps.isBot === 'boolean') updates.isBot = ps.isBot;
 	if (typeof ps.carefulBot === 'boolean') profileUpdates.carefulBot = ps.carefulBot;
 	if (typeof ps.autoAcceptFollowed === 'boolean') profileUpdates.autoAcceptFollowed = ps.autoAcceptFollowed;
 	if (typeof ps.isCat === 'boolean') updates.isCat = ps.isCat;
-	if (typeof ps.autoWatch === 'boolean') profileUpdates.autoWatch = ps.autoWatch;
 	if (typeof ps.injectFeaturedNote === 'boolean') profileUpdates.injectFeaturedNote = ps.injectFeaturedNote;
 	if (typeof ps.alwaysMarkNsfw === 'boolean') profileUpdates.alwaysMarkNsfw = ps.alwaysMarkNsfw;
 
