@@ -55,7 +55,7 @@ export const defaultDeviceUserSettings = {
 export const defaultDeviceSettings = {
 	lang: null,
 	loadRawImages: false,
-	alwaysShowNsfw: false,
+	nsfw: 'respect', // respect, force, ignore
 	useOsNativeEmojis: false,
 	serverDisconnectedBehavior: 'quiet',
 	accounts: [],
@@ -80,6 +80,7 @@ export const defaultDeviceSettings = {
 	useFullReactionPicker: false,
 	reactionPickerWidth: 1,
 	reactionPickerHeight: 1,
+	showGapBetweenNotesInTimeline: true,
 	sidebarDisplay: 'full', // full, icon, hide
 	instanceTicker: 'remote', // none, remote, always
 	roomGraphicsQuality: 'medium',
@@ -87,14 +88,6 @@ export const defaultDeviceSettings = {
 	deckColumnAlign: 'left',
 	deckAlwaysShowMainColumn: true,
 	deckMainColumnPlace: 'left',
-	sfxVolume: 0.3,
-	sfxNote: 'syuilo/down',
-	sfxNoteMy: 'syuilo/up',
-	sfxNotification: 'syuilo/pope2',
-	sfxChat: 'syuilo/pope1',
-	sfxChatBg: 'syuilo/waon',
-	sfxAntenna: 'syuilo/triple',
-	sfxChannel: 'syuilo/square-pico',
 	userData: {},
 };
 
@@ -306,6 +299,7 @@ export const store = createStore({
 				},
 
 				//#region Deck
+				// TODO: deck関連は動的にモジュール読み込みしたい
 				addDeckColumn(state, column) {
 					if (column.name == undefined) column.name = null;
 					state.deck.columns.push(column);
@@ -423,6 +417,12 @@ export const store = createStore({
 					column.widgets = column.widgets.filter(w => w.id != x.widget.id);
 				},
 
+				setDeckWidgets(state, x) {
+					const column = state.deck.columns.find(c => c.id == x.id);
+					if (column == null) return;
+					column.widgets = x.widgets;
+				},
+
 				renameDeckColumn(state, x) {
 					const column = state.deck.columns.find(c => c.id == x.id);
 					if (column == null) return;
@@ -430,9 +430,9 @@ export const store = createStore({
 				},
 
 				updateDeckColumn(state, x) {
-					let column = state.deck.columns.find(c => c.id == x.id);
-					if (column == null) return;
-					column = x;
+					const column = state.deck.columns.findIndex(c => c.id == x.id);
+					if (column > -1) return;
+					state.deck.columns[column] = x;
 				},
 				//#endregion
 
