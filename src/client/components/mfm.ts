@@ -48,6 +48,11 @@ export default defineComponent({
 
 		const ast = (this.plain ? parsePlain : parse)(this.text);
 
+		const validTime = (t: string | null | undefined) => {
+			if (t == null) return null;
+			return t.match(/^[0-9.]+s$/) ? t : null;
+		};
+
 		const genEl = (ast: MfmForest) => concat(ast.map((token): VNode[] => {
 			switch (token.node.type) {
 				case 'text': {
@@ -82,22 +87,22 @@ export default defineComponent({
 					let style;
 					switch (token.node.props.name) {
 						case 'tada': {
-							style = `font-size: 150%;` + (this.$store.state.device.animatedMfm ? 'animation: tada 1s linear infinite both;' : '');
+							style = `font-size: 150%;` + (this.$store.state.animatedMfm ? 'animation: tada 1s linear infinite both;' : '');
 							break;
 						}
 						case 'jelly': {
-							const speed = token.node.props.args.speed || '1s';
-							style = (this.$store.state.device.animatedMfm ? `animation: mfm-rubberBand ${speed} linear infinite both;` : '');
+							const speed = validTime(token.node.props.args.speed) || '1s';
+							style = (this.$store.state.animatedMfm ? `animation: mfm-rubberBand ${speed} linear infinite both;` : '');
 							break;
 						}
 						case 'twitch': {
-							const speed = token.node.props.args.speed || '0.5s';
-							style = this.$store.state.device.animatedMfm ? `animation: mfm-twitch ${speed} ease infinite;` : '';
+							const speed = validTime(token.node.props.args.speed) || '0.5s';
+							style = this.$store.state.animatedMfm ? `animation: mfm-twitch ${speed} ease infinite;` : '';
 							break;
 						}
 						case 'shake': {
-							const speed = token.node.props.args.speed || '0.5s';
-							style = this.$store.state.device.animatedMfm ? `animation: mfm-shake ${speed} ease infinite;` : '';
+							const speed = validTime(token.node.props.args.speed) || '0.5s';
+							style = this.$store.state.animatedMfm ? `animation: mfm-shake ${speed} ease infinite;` : '';
 							break;
 						}
 						case 'spin': {
@@ -109,16 +114,16 @@ export default defineComponent({
 								token.node.props.args.x ? 'mfm-spinX' :
 								token.node.props.args.y ? 'mfm-spinY' :
 								'mfm-spin';
-							const speed = token.node.props.args.speed || '1.5s';
-							style = this.$store.state.device.animatedMfm ? `animation: ${anime} ${speed} linear infinite; animation-direction: ${direction};` : '';
+							const speed = validTime(token.node.props.args.speed) || '1.5s';
+							style = this.$store.state.animatedMfm ? `animation: ${anime} ${speed} linear infinite; animation-direction: ${direction};` : '';
 							break;
 						}
 						case 'jump': {
-							style = this.$store.state.device.animatedMfm ? 'animation: mfm-jump 0.75s linear infinite;' : '';
+							style = this.$store.state.animatedMfm ? 'animation: mfm-jump 0.75s linear infinite;' : '';
 							break;
 						}
 						case 'bounce': {
-							style = this.$store.state.device.animatedMfm ? 'animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom;' : '';
+							style = this.$store.state.animatedMfm ? 'animation: mfm-bounce 0.75s linear infinite; transform-origin: center bottom;' : '';
 							break;
 						}
 						case 'flip': {
@@ -128,6 +133,35 @@ export default defineComponent({
 								'scaleX(-1)';
 							style = `transform: ${transform};`;
 							break;
+						}
+						case 'x2': {
+							style = `font-size: 200%;`;
+							break;
+						}
+						case 'x3': {
+							style = `font-size: 400%;`;
+							break;
+						}
+						case 'x4': {
+							style = `font-size: 600%;`;
+							break;
+						}
+						case 'font': {
+							const family =
+								token.node.props.args.serif ? 'serif' :
+								token.node.props.args.monospace ? 'monospace' :
+								token.node.props.args.cursive ? 'cursive' :
+								token.node.props.args.fantasy ? 'fantasy' :
+								token.node.props.args.emoji ? 'emoji' :
+								token.node.props.args.math ? 'math' :
+								null;
+							if (family) style = `font-family: ${family};`;
+							break;
+						}
+						case 'blur': {
+							return h('span', {
+								class: '_mfm_blur_',
+							}, genEl(token.children));
 						}
 					}
 					if (style == null) {
