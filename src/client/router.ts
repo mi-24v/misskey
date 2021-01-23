@@ -29,6 +29,7 @@ export const router = createRouter({
 		{ path: '/featured', component: page('featured') },
 		{ path: '/docs', component: page('docs') },
 		{ path: '/theme-editor', component: page('theme-editor') },
+		{ path: '/advanced-theme-editor', component: page('advanced-theme-editor') },
 		{ path: '/docs/:doc', component: page('doc'), props: route => ({ doc: route.params.doc }) },
 		{ path: '/explore', component: page('explore') },
 		{ path: '/explore/tags/:tag', props: true, component: page('explore') },
@@ -54,7 +55,7 @@ export const router = createRouter({
 		{ path: '/my/lists', component: page('my-lists/index') },
 		{ path: '/my/lists/:list', component: page('my-lists/list') },
 		{ path: '/my/groups', component: page('my-groups/index') },
-		{ path: '/my/groups/:group', component: page('my-groups/group') },
+		{ path: '/my/groups/:group', component: page('my-groups/group'), props: route => ({ groupId: route.params.group }) },
 		{ path: '/my/antennas', component: page('my-antennas/index') },
 		{ path: '/my/clips', component: page('my-clips/index') },
 		{ path: '/scratchpad', component: page('scratchpad') },
@@ -80,7 +81,6 @@ export const router = createRouter({
 		{ path: '/miauth/:session', component: page('miauth') },
 		{ path: '/authorize-follow', component: page('follow') },
 		{ path: '/share', component: page('share') },
-		{ path: '/test', component: page('test') },
 		{ path: '/:catchAll(.*)', component: page('not-found') }
 	],
 	// なんかHacky
