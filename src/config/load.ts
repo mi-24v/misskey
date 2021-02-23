@@ -2,7 +2,8 @@
  * Config loader
  */
 
-import * as yenv from 'yenv';
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
 import { Source, Mixin } from './types';
 import * as meta from '../meta.json';
 
@@ -19,7 +20,7 @@ const path = process.env.NODE_ENV === 'test'
 	: `${dir}/default.yml`;
 
 export default function load() {
-	const config = yenv(path, { strict: false } ) as Source;
+	const config = yaml.safeLoad(fs.readFileSync(path, 'utf-8')) as Source;
 
 	const mixin = {} as Mixin;
 
