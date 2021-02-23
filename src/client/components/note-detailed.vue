@@ -52,7 +52,7 @@
 					<span class="localOnly" v-if="appearNote.localOnly"><Fa :icon="faBiohazard"/></span>
 				</div>
 				<div class="username"><MkAcct :user="appearNote.user"/></div>
-				<MkInstanceTicker class="ticker" :instance="appearNote.user.instance"/>
+				<MkInstanceTicker v-if="showTicker" class="ticker" :instance="appearNote.user.instance"/>
 			</div>
 		</header>
 		<div class="main">
@@ -756,7 +756,13 @@ export default defineComponent({
 			};
 			if (isLink(e.target)) return;
 			if (window.getSelection().toString() !== '') return;
-			os.contextMenu(this.getMenu(), e).then(this.focus);
+
+			if (this.$store.state.useReactionPickerForContextMenu) {
+				e.preventDefault();
+				this.react();
+			} else {
+				os.contextMenu(this.getMenu(), e).then(this.focus);
+			}
 		},
 
 		menu(viaKeyboard = false) {
