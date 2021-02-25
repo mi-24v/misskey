@@ -1,0 +1,74 @@
+---
+kind: pipeline
+name: x86_64
+
+workspace:
+  path: /misskey
+
+environment:
+  DOCKER_BUILDKIT: 1
+
+steps:
+  - name: slack notification on start
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} start: {{build.link}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+
+  - name: build latest image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+    when:
+      branch:
+        - miwkey-master
+      event:
+        - push
+
+  - name: build edge image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      tags: edge
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+    when:
+      branch:
+        - miwkey-develop
+      event:
+        - push
+
+  - name: slack notification on complete
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{#success build.status}}
+           {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} succeeded: {{build.link}}
+        {{else}}
+        {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} failed: {{build.link}}
+        {{/success}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+      status:
+        - success
+        - failure
