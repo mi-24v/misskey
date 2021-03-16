@@ -19,8 +19,11 @@ RUN apk add --no-cache \
     nasm \
     pkgconfig \
     python \
-    vips-dev \
     zlib-dev
+# sharp 0.28.0 でarm64v8のprebuiltバイナリが出るので下記は不要になるかもしれない
+# https://github.com/lovell/sharp/issues/2498
+RUN apk add libimagequant-dev --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main
+RUN apk add vips-dev --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 
 COPY package.json yarn.lock ./
 RUN yarn install
