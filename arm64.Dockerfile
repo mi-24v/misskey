@@ -15,11 +15,11 @@ RUN apk add --no-cache \
     gcc \
     libc-dev \
     libtool \
-    libvips \
     make \
     nasm \
     pkgconfig \
     python \
+    vips-dev \
     zlib-dev
 
 COPY package.json yarn.lock ./
