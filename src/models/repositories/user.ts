@@ -1,11 +1,11 @@
 import $ from 'cafy';
 import { EntityRepository, Repository, In, Not } from 'typeorm';
 import { User, ILocalUser, IRemoteUser } from '../entities/user';
-import { Emojis, Notes, NoteUnreads, FollowRequests, Notifications, MessagingMessages, UserNotePinings, Followings, Blockings, Mutings, UserProfiles, UserSecurityKeys, UserGroupJoinings, Pages, Announcements, AnnouncementReads, Antennas, AntennaNotes, ChannelFollowings, Instances } from '..';
+import { Notes, NoteUnreads, FollowRequests, Notifications, MessagingMessages, UserNotePinings, Followings, Blockings, Mutings, UserProfiles, UserSecurityKeys, UserGroupJoinings, Pages, Announcements, AnnouncementReads, Antennas, AntennaNotes, ChannelFollowings, Instances } from '..';
 import config from '../../config';
 import { SchemaType } from '../../misc/schema';
 import { awaitAll } from '../../prelude/await-all';
-import { Emoji } from '../entities/emoji';
+import { populateEmojis } from '../../misc/populate-emojis';
 
 export type PackedUser = SchemaType<typeof packedUserSchema>;
 
@@ -150,9 +150,6 @@ export class UserRepository extends Repository<User> {
 		options?: {
 			detail?: boolean,
 			includeSecrets?: boolean,
-			_hint_?: {
-				emojis: Emoji[] | null;
-			};
 		}
 	): Promise<PackedUser> {
 		const opts = Object.assign({
@@ -164,39 +161,12 @@ export class UserRepository extends Repository<User> {
 		const meId = me ? typeof me === 'string' ? me : me.id : null;
 
 		const relation = meId && (meId !== user.id) && opts.detail ? await this.getRelation(meId, user.id) : null;
-		const pins = opts.detail ? await UserNotePinings.find({
-			where: { userId: user.id },
-			order: { id: 'DESC' }
-		}) : [];
+		const pins = opts.detail ? await UserNotePinings.createQueryBuilder('pin')
+			.where('pin.userId = :userId', { userId: user.id })
+			.innerJoinAndSelect('pin.note', 'note')
+			.orderBy('pin.id', 'DESC')
+			.getMany() : [];
 		const profile = opts.detail ? await UserProfiles.findOneOrFail(user.id) : null;
-
-		let emojis: Emoji[] = [];
-		if (user.emojis.length > 0) {
-			// 与えられたhintだけで十分(=新たにクエリする必要がない)かどうかを表すフラグ
-			let enough = true;
-			if (options?._hint_?.emojis) {
-				for (const name of user.emojis) {
-					const matched = options._hint_.emojis.find(x => x.name === name && x.host === user.host);
-					if (matched) {
-						emojis.push(matched);
-					} else {
-						enough = false;
-					}
-				}
-			} else {
-				enough = false;
-			}
-
-			if (!enough) {
-				emojis = await Emojis.find({
-					where: {
-						name: In(user.emojis),
-						host: user.host
-					},
-					select: ['name', 'host', 'url', 'aliases']
-				});
-			}
-		}
 
 		const falsy = opts.detail ? false : undefined;
 
@@ -220,9 +190,7 @@ export class UserRepository extends Repository<User> {
 				faviconUrl: instance.faviconUrl,
 				themeColor: instance.themeColor,
 			} : undefined) : undefined,
-
-			// カスタム絵文字添付
-			emojis: emojis,
+			emojis: populateEmojis(user.emojis, user.host),
 
 			...(opts.detail ? {
 				url: profile!.url,
@@ -244,7 +212,7 @@ export class UserRepository extends Repository<User> {
 				followingCount: user.followingCount,
 				notesCount: user.notesCount,
 				pinnedNoteIds: pins.map(pin => pin.noteId),
-				pinnedNotes: Notes.packMany(pins.map(pin => pin.noteId), meId, {
+				pinnedNotes: Notes.packMany(pins.map(pin => pin.note!), meId, {
 					detail: true
 				}),
 				pinnedPageId: profile!.pinnedPageId,
