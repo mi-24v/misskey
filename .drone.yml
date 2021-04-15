@@ -109,7 +109,7 @@ steps:
       repo: miwpayou0808/misskey
       tags: 
         - latest-arm64
-        - "${DRONE_COMMIT_SHA:0:7}"
+        - "${DRONE_COMMIT_SHA:0:7}-arm64"
       username:
         from_secret: dockerhub_username
       password:
@@ -128,7 +128,7 @@ steps:
       repo: miwpayou0808/misskey
       tags: 
         - edge-arm64
-        - "${DRONE_COMMIT_SHA:0:7}"
+        - "${DRONE_COMMIT_SHA}-arm64"
       username:
         from_secret: dockerhub_username
       password:
