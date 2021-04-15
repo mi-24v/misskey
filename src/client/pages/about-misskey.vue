@@ -1,5 +1,5 @@
 <template>
-<div style="overflow: hidden;">
+<div style="overflow: clip;">
 	<FormBase class="znqjceqz">
 		<div id="debug"></div>
 		<section class="_formItem about">
@@ -63,6 +63,7 @@ import FormKeyValueView from '@client/components/form/key-value-view.vue';
 import MkLink from '@client/components/link.vue';
 import { physics } from '@client/scripts/physics.ts';
 import * as os from '@client/os';
+import * as symbols from '@client/symbols';
 
 const patrons = [
 	'Satsuki Yanagi',
@@ -114,7 +115,7 @@ export default defineComponent({
 
 	data() {
 		return {
-			INFO: {
+			[symbols.PAGE_INFO]: {
 				title: this.$ts.aboutMisskey,
 				icon: null
 			},
