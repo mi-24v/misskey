@@ -88,6 +88,8 @@ export default defineComponent({
 	display: flex;
 
 	> .avatar {
+		position: sticky;
+		top: calc(var(--stickyTop, 0px) + 16px);
 		display: block;
 		width: 54px;
 		height: 54px;
@@ -276,6 +278,11 @@ export default defineComponent({
 			> .balloon {
 				background: $me-balloon-color;
 				text-align: left;
+
+				::selection {
+					color: var(--accent);
+					background-color: #fff;
+				} 
 
 				&.noText {
 					background: transparent;
