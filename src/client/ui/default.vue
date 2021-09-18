@@ -12,7 +12,7 @@
 			</div>
 		</template>
 
-		<main class="main _panel" @contextmenu.stop="onContextmenu">
+		<main class="main" @contextmenu.stop="onContextmenu" :style="{ background: pageInfo?.bg }">
 			<header class="header" @click="onHeaderClick">
 				<XHeader :info="pageInfo" :back-button="true" @back="back()"/>
 			</header>
@@ -54,12 +54,14 @@
 		<XWidgets v-if="widgetsShowing" class="tray"/>
 	</transition>
 
+	<iframe v-if="$store.state.aiChanMode" class="ivnzpscs" ref="live2d" src="https://misskey-dev.github.io/mascot-web/?scale=2&y=1.4"></iframe>
+
 	<XCommon/>
 </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, defineAsyncComponent } from 'vue';
+import { defineComponent, defineAsyncComponent, markRaw } from 'vue';
 import { instanceName } from '@client/config';
 import { StickySidebar } from '@client/scripts/sticky-sidebar';
 import XSidebar from './default.sidebar.vue';
@@ -131,6 +133,28 @@ export default defineComponent({
 			this.isMobile = (window.innerWidth <= MOBILE_THRESHOLD);
 			this.isDesktop = (window.innerWidth >= DESKTOP_THRESHOLD);
 		}, { passive: true });
+
+		if (this.$store.state.aiChanMode) {
+			const iframeRect = this.$refs.live2d.getBoundingClientRect();
+			window.addEventListener('mousemove', ev => {
+				this.$refs.live2d.contentWindow.postMessage({
+					type: 'moveCursor',
+					body: {
+						x: ev.clientX - iframeRect.left,
+						y: ev.clientY - iframeRect.top,
+					}
+				}, '*');
+			}, { passive: true });
+			window.addEventListener('touchmove', ev => {
+				this.$refs.live2d.contentWindow.postMessage({
+					type: 'moveCursor',
+					body: {
+						x: ev.touches[0].clientX - iframeRect.left,
+						y: ev.touches[0].clientY - iframeRect.top,
+					}
+				}, '*');
+			}, { passive: true });
+		}
 	},
 
 	methods: {
@@ -201,6 +225,10 @@ export default defineComponent({
 				}
 			}], e);
 		},
+
+		onAiClick(ev) {
+			//if (this.live2d) this.live2d.click(ev);
+		}
 	}
 });
 </script>
@@ -240,7 +268,7 @@ export default defineComponent({
 
 	&.wallpaper {
 		background: var(--wallpaperOverlay);
-		//backdrop-filter: blur(4px);
+		//backdrop-filter: var(--blur, blur(4px));
 	}
 
 	&.isMobile {
@@ -292,7 +320,10 @@ export default defineComponent({
 			width: 750px;
 			margin: 0 16px 0 0;
 			background: var(--panel);
+			border-left: solid 1px var(--divider);
+			border-right: solid 1px var(--divider);
 			border-radius: 0;
+			overflow: clip;
 			--margin: 12px;
 
 			> .header {
@@ -300,8 +331,8 @@ export default defineComponent({
 				z-index: 1000;
 				top: var(--globalHeaderHeight, 0px);
 				height: $header-height;
-				-webkit-backdrop-filter: blur(32px);
-				backdrop-filter: blur(32px);
+				-webkit-backdrop-filter: var(--blur, blur(32px));
+				backdrop-filter: var(--blur, blur(32px));
 				background-color: var(--header);
 				border-bottom: solid 0.5px var(--divider);
 			}
@@ -343,6 +374,7 @@ export default defineComponent({
 
 			> .main {
 				margin-top: 0;
+				border: solid 1px var(--divider);
 				border-radius: var(--radius);
 			}
 
@@ -376,8 +408,8 @@ export default defineComponent({
 		display: flex;
 		width: 100%;
 		box-sizing: border-box;
-		-webkit-backdrop-filter: blur(32px);
-		backdrop-filter: blur(32px);
+		-webkit-backdrop-filter: var(--blur, blur(32px));
+		backdrop-filter: var(--blur, blur(32px));
 		background-color: var(--header);
 		border-top: solid 0.5px var(--divider);
 
@@ -453,6 +485,16 @@ export default defineComponent({
 		box-sizing: border-box;
 		overflow: auto;
 		background: var(--bg);
+	}
+
+	> .ivnzpscs {
+		position: fixed;
+		bottom: 0;
+		right: 0;
+		width: 300px;
+		height: 600px;
+		border: none;
+		pointer-events: none;
 	}
 }
 </style>

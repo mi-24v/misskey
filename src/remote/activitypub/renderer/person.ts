@@ -1,15 +1,15 @@
 import { URL } from 'url';
 import renderImage from './image';
 import renderKey from './key';
-import config from '@/config';
-import { ILocalUser } from '../../../models/entities/user';
+import config from '@/config/index';
+import { ILocalUser } from '@/models/entities/user';
 import { toHtml } from '../../../mfm/to-html';
 import { parse } from '../../../mfm/parse';
 import { getEmojis } from './note';
 import renderEmoji from './emoji';
 import { IIdentifier } from '../models/identifier';
 import renderHashtag from './hashtag';
-import { DriveFiles, UserProfiles } from '../../../models';
+import { DriveFiles, UserProfiles } from '@/models/index';
 import { getUserKeypair } from '@/misc/keypair-store';
 
 export async function renderPerson(user: ILocalUser) {

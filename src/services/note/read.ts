@@ -1,12 +1,12 @@
-import { publishMainStream } from '../stream';
-import { Note } from '../../models/entities/note';
-import { User } from '../../models/entities/user';
-import { NoteUnreads, AntennaNotes, Users, Followings, ChannelFollowings } from '../../models';
+import { publishMainStream } from '@/services/stream';
+import { Note } from '@/models/entities/note';
+import { User } from '@/models/entities/user';
+import { NoteUnreads, AntennaNotes, Users, Followings, ChannelFollowings } from '@/models/index';
 import { Not, IsNull, In } from 'typeorm';
-import { Channel } from '../../models/entities/channel';
+import { Channel } from '@/models/entities/channel';
 import { checkHitAntenna } from '@/misc/check-hit-antenna';
 import { getAntennas } from '@/misc/antenna-cache';
-import { PackedNote } from '../../models/repositories/note';
+import { PackedNote } from '@/models/repositories/note';
 import { readNotificationByQuery } from '@/server/api/common/read-notification';
 
 /**
@@ -52,7 +52,7 @@ export default async function(
 
 		if (note.user != null) { // たぶんnullになることは無いはずだけど一応
 			for (const antenna of myAntennas) {
-				if (checkHitAntenna(antenna, note, note.user as any, undefined, Array.from(following))) {
+				if (await checkHitAntenna(antenna, note, note.user as any, undefined, Array.from(following))) {
 					readAntennaNotes.push(note);
 				}
 			}

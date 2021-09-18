@@ -2,9 +2,9 @@
 <div class="mk-app" :class="{ wallpaper }">
 	<XSidebar ref="nav" class="sidebar"/>
 
-	<div class="contents" ref="contents" @contextmenu.stop="onContextmenu">
-		<header class="header" ref="header" @click="onHeaderClick">
-			<XHeader :info="pageInfo"/>
+	<div class="contents" ref="contents" @contextmenu.stop="onContextmenu" :style="{ background: pageInfo?.bg }">
+		<header class="header" ref="header" @click="onHeaderClick" :style="{ background: pageInfo?.bg }">
+			<XHeader :info="pageInfo" :back-button="true" @back="back()"/>
 		</header>
 		<main ref="main">
 			<div class="content">
@@ -175,6 +175,10 @@ export default defineComponent({
 			window.scroll({ top: 0, behavior: 'smooth' });
 		},
 
+		back() {
+			history.back();
+		},
+
 		onTransition() {
 			if (window._scroll) window._scroll();
 		},
@@ -250,7 +254,10 @@ export default defineComponent({
 
 	&.wallpaper {
 		background: var(--wallpaperOverlay);
-		//backdrop-filter: blur(4px);
+		//backdrop-filter: var(--blur, blur(4px));
+	}
+
+	> .sidebar {
 	}
 
 	> .contents {
@@ -258,6 +265,7 @@ export default defineComponent({
 		min-width: 0;
 		--stickyTop: #{$header-height};
 		padding-top: $header-height;
+		background: var(--panel);
 
 		> .header {
 			position: fixed;
@@ -269,10 +277,10 @@ export default defineComponent({
 			text-align: center;
 			font-weight: bold;
 			//background-color: var(--panel);
-			-webkit-backdrop-filter: blur(32px);
-			backdrop-filter: blur(32px);
+			-webkit-backdrop-filter: var(--blur, blur(32px));
+			backdrop-filter: var(--blur, blur(32px));
 			background-color: var(--header);
-			//border-bottom: solid 0.5px var(--divider);
+			border-bottom: solid 0.5px var(--divider);
 			user-select: none;
 		}
 
@@ -304,7 +312,8 @@ export default defineComponent({
 
 	> .widgets {
 		padding: 0 var(--margin);
-		border-left: solid 0.5px var(--divider);
+		//border-left: solid 0.5px var(--divider);
+		background: var(--navBg);
 
 		@media (max-width: $widgets-hide-threshold) {
 			display: none;
@@ -341,8 +350,8 @@ export default defineComponent({
 		display: flex;
 		width: 100%;
 		box-sizing: border-box;
-		-webkit-backdrop-filter: blur(32px);
-		backdrop-filter: blur(32px);
+		-webkit-backdrop-filter: var(--blur, blur(32px));
+		backdrop-filter: var(--blur, blur(32px));
 		background-color: var(--header);
 
 		&:not(.navHidden) {
