@@ -74,7 +74,7 @@
 		"@types/matter-js": "0.17.5",
 		"@types/mocha": "8.2.3",
 		"@types/node": "16.9.6",
-		"@types/node-fetch": "2.5.12",
+		"@types/node-fetch": "3.0.3",
 		"@types/nodemailer": "6.4.4",
 		"@types/nprogress": "0.2.0",
 		"@types/oauth": "0.9.1",
