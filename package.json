@@ -92,7 +92,7 @@
 		"@types/rimraf": "3.0.2",
 		"@types/seedrandom": "2.4.28",
 		"@types/sharp": "0.29.2",
-		"@types/sinonjs__fake-timers": "6.0.4",
+		"@types/sinonjs__fake-timers": "8.1.0",
 		"@types/speakeasy": "2.0.6",
 		"@types/throttle-debounce": "2.1.0",
 		"@types/tinycolor2": "1.4.3",
