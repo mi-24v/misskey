@@ -1,5 +1,6 @@
 ---
 kind: pipeline
+type: docker
 name: x86_64
 
 workspace:
@@ -26,7 +27,7 @@ steps:
       repo: miwpayou0808/misskey
       tags:
         - latest
-        - "${DRONE_COMMIT_SHA:0:7}"
+        - "${DRONE_COMMIT_SHA:0:8}"
       username:
         from_secret: dockerhub_username
       password:
@@ -63,7 +64,7 @@ steps:
         from_secret: slack_webhook_url
       template: >
         {{#success build.status}}
-           {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} succeeded: {{build.link}}
+           {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 commit {{build.commit}} build #{{build.number}} succeeded: {{build.link}}
         {{else}}
         {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} failed: {{build.link}}
         {{/success}}
@@ -79,6 +80,7 @@ steps:
 
 ---
 kind: pipeline
+type: docker
 name: arm64
 
 workspace:
@@ -109,7 +111,7 @@ steps:
       repo: miwpayou0808/misskey
       tags: 
         - latest-arm64
-        - "${DRONE_COMMIT_SHA:0:7}-arm64"
+        - "${DRONE_COMMIT_SHA:0:8}-arm64"
       username:
         from_secret: dockerhub_username
       password:
@@ -148,7 +150,7 @@ steps:
         from_secret: slack_webhook_url
       template: >
         {{#success build.status}}
-          {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 build #{{build.number}} succeeded: {{build.link}}
+          {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 commit {{build.commit}} build #{{build.number}} succeeded: {{build.link}}
         {{else}}
           {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 build #{{build.number}} failed: {{build.link}}
         {{/success}}
