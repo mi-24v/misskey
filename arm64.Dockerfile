@@ -25,7 +25,7 @@ FROM base AS runner
 
 RUN apk add --no-cache \
     ffmpeg \
-    tini \
+    tini
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
