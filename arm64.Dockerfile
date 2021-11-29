@@ -8,6 +8,8 @@ ENV BUILD_DEPS autoconf automake file g++ gcc libc-dev libtool make nasm pkgconf
 
 FROM base AS builder
 
+COPY . ./
+
 # sharp 0.28.0 でarm64v8のprebuiltバイナリが出るので下記は不要になるかもしれない
 # https://github.com/lovell/sharp/issues/2498
 RUN apk add libimagequant-dev --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main
