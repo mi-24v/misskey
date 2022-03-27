@@ -1,14 +1,14 @@
 import { EntityRepository, Repository } from 'typeorm';
-import { DriveFile } from '@/models/entities/drive-file';
-import { Users, DriveFolders } from '../index';
-import { User } from '@/models/entities/user';
-import { toPuny } from '@/misc/convert-host';
-import { awaitAll } from '@/prelude/await-all';
-import { Packed } from '@/misc/schema';
-import config from '@/config/index';
-import { query, appendQuery } from '@/prelude/url';
-import { Meta } from '@/models/entities/meta';
-import { fetchMeta } from '@/misc/fetch-meta';
+import { DriveFile } from '@/models/entities/drive-file.js';
+import { Users, DriveFolders } from '../index.js';
+import { User } from '@/models/entities/user.js';
+import { toPuny } from '@/misc/convert-host.js';
+import { awaitAll, Promiseable } from '@/prelude/await-all.js';
+import { Packed } from '@/misc/schema.js';
+import config from '@/config/index.js';
+import { query, appendQuery } from '@/prelude/url.js';
+import { Meta } from '@/models/entities/meta.js';
+import { fetchMeta } from '@/misc/fetch-meta.js';
 
 type PackOptions = {
 	detail?: boolean,
@@ -41,7 +41,7 @@ export class DriveFileRepository extends Repository<DriveFile> {
 		return file.properties;
 	}
 
-	public getPublicUrl(file: DriveFile, thumbnail = false, meta?: Meta): string | null {
+	public getPublicUrl(file: DriveFile, thumbnail = false): string | null {
 		// リモートかつメディアプロキシ
 		if (file.uri != null && file.userHost != null && config.mediaProxy != null) {
 			return appendQuery(config.mediaProxy, query({
@@ -51,7 +51,7 @@ export class DriveFileRepository extends Repository<DriveFile> {
 		}
 
 		// リモートかつ期限切れはローカルプロキシを試みる
-		if (file.uri != null && file.isLink && meta && meta.proxyRemoteFiles) {
+		if (file.uri != null && file.isLink && config.proxyRemoteFiles) {
 			const key = thumbnail ? file.thumbnailAccessKey : file.webpublicAccessKey;
 
 			if (key && !key.match('/')) {	// 古いものはここにオブジェクトストレージキーが入ってるので除外
@@ -126,7 +126,7 @@ export class DriveFileRepository extends Repository<DriveFile> {
 
 		const meta = await fetchMeta();
 
-		return await awaitAll({
+		return await awaitAll<Packed<'DriveFile'>>({
 			id: file.id,
 			createdAt: file.createdAt.toISOString(),
 			name: file.name,
@@ -136,8 +136,8 @@ export class DriveFileRepository extends Repository<DriveFile> {
 			isSensitive: file.isSensitive,
 			blurhash: file.blurhash,
 			properties: opts.self ? file.properties : this.getPublicProperties(file),
-			url: opts.self ? file.url : this.getPublicUrl(file, false, meta),
-			thumbnailUrl: this.getPublicUrl(file, true, meta),
+			url: opts.self ? file.url : this.getPublicUrl(file, false),
+			thumbnailUrl: this.getPublicUrl(file, true),
 			comment: file.comment,
 			folderId: file.folderId,
 			folder: opts.detail && file.folderId ? DriveFolders.pack(file.folderId, {
@@ -156,112 +156,3 @@ export class DriveFileRepository extends Repository<DriveFile> {
 		return items.filter(x => x != null);
 	}
 }
-
-export const packedDriveFileSchema = {
-	type: 'object' as const,
-	optional: false as const, nullable: false as const,
-	properties: {
-		id: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		createdAt: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'date-time',
-		},
-		name: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			example: 'lenna.jpg',
-		},
-		type: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			example: 'image/jpeg',
-		},
-		md5: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'md5',
-			example: '15eca7fba0480996e2245f5185bf39f2',
-		},
-		size: {
-			type: 'number' as const,
-			optional: false as const, nullable: false as const,
-			example: 51469,
-		},
-		isSensitive: {
-			type: 'boolean' as const,
-			optional: false as const, nullable: false as const,
-		},
-		blurhash: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-		},
-		properties: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
-			properties: {
-				width: {
-					type: 'number' as const,
-					optional: true as const, nullable: false as const,
-					example: 1280,
-				},
-				height: {
-					type: 'number' as const,
-					optional: true as const, nullable: false as const,
-					example: 720,
-				},
-				orientation: {
-					type: 'number' as const,
-					optional: true as const, nullable: false as const,
-					example: 8,
-				},
-				avgColor: {
-					type: 'string' as const,
-					optional: true as const, nullable: false as const,
-					example: 'rgb(40,65,87)',
-				},
-			},
-		},
-		url: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'url',
-		},
-		thumbnailUrl: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'url',
-		},
-		comment: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-		},
-		folderId: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		folder: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-			ref: 'DriveFolder' as const,
-		},
-		userId: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		user: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-			ref: 'User' as const,
-		},
-	},
-};

@@ -1,32 +1,32 @@
-import * as promiseLimit from 'promise-limit';
+import promiseLimit from 'promise-limit';
 
-import config from '@/config/index';
-import Resolver from '../resolver';
-import post from '@/services/note/create';
-import { resolvePerson, updatePerson } from './person';
-import { resolveImage } from './image';
-import { IRemoteUser } from '@/models/entities/user';
-import { htmlToMfm } from '../misc/html-to-mfm';
-import { extractApHashtags } from './tag';
-import { unique, toArray, toSingle } from '@/prelude/array';
-import { extractPollFromQuestion } from './question';
-import vote from '@/services/note/polls/vote';
-import { apLogger } from '../logger';
-import { DriveFile } from '@/models/entities/drive-file';
-import { deliverQuestionUpdate } from '@/services/note/polls/update';
-import { extractDbHost, toPuny } from '@/misc/convert-host';
-import { Emojis, Polls, MessagingMessages } from '@/models/index';
-import { Note } from '@/models/entities/note';
-import { IObject, getOneApId, getApId, getOneApHrefNullable, validPost, IPost, isEmoji, getApType } from '../type';
-import { Emoji } from '@/models/entities/emoji';
-import { genId } from '@/misc/gen-id';
-import { fetchMeta } from '@/misc/fetch-meta';
-import { getApLock } from '@/misc/app-lock';
-import { createMessage } from '@/services/messages/create';
-import { parseAudience } from '../audience';
-import { extractApMentions } from './mention';
-import DbResolver from '../db-resolver';
-import { StatusError } from '@/misc/fetch';
+import config from '@/config/index.js';
+import Resolver from '../resolver.js';
+import post from '@/services/note/create.js';
+import { resolvePerson, updatePerson } from './person.js';
+import { resolveImage } from './image.js';
+import { IRemoteUser } from '@/models/entities/user.js';
+import { htmlToMfm } from '../misc/html-to-mfm.js';
+import { extractApHashtags } from './tag.js';
+import { unique, toArray, toSingle } from '@/prelude/array.js';
+import { extractPollFromQuestion } from './question.js';
+import vote from '@/services/note/polls/vote.js';
+import { apLogger } from '../logger.js';
+import { DriveFile } from '@/models/entities/drive-file.js';
+import { deliverQuestionUpdate } from '@/services/note/polls/update.js';
+import { extractDbHost, toPuny } from '@/misc/convert-host.js';
+import { Emojis, Polls, MessagingMessages } from '@/models/index.js';
+import { Note } from '@/models/entities/note.js';
+import { IObject, getOneApId, getApId, getOneApHrefNullable, validPost, IPost, isEmoji, getApType } from '../type.js';
+import { Emoji } from '@/models/entities/emoji.js';
+import { genId } from '@/misc/gen-id.js';
+import { fetchMeta } from '@/misc/fetch-meta.js';
+import { getApLock } from '@/misc/app-lock.js';
+import { createMessage } from '@/services/messages/create.js';
+import { parseAudience } from '../audience.js';
+import { extractApMentions } from './mention.js';
+import DbResolver from '../db-resolver.js';
+import { StatusError } from '@/misc/fetch.js';
 
 const logger = apLogger;
 
@@ -320,14 +320,15 @@ export async function extractEmojis(tags: IObject | IObject[], host: string): Pr
 			if ((tag.updated != null && exists.updatedAt == null)
 				|| (tag.id != null && exists.uri == null)
 				|| (tag.updated != null && exists.updatedAt != null && new Date(tag.updated) > exists.updatedAt)
-				|| (tag.icon!.url !== exists.url)
+				|| (tag.icon!.url !== exists.originalUrl)
 			) {
 				await Emojis.update({
 					host,
 					name,
 				}, {
 					uri: tag.id,
-					url: tag.icon!.url,
+					originalUrl: tag.icon!.url,
+					publicUrl: tag.icon!.url,
 					updatedAt: new Date(),
 				});
 
@@ -342,14 +343,15 @@ export async function extractEmojis(tags: IObject | IObject[], host: string): Pr
 
 		logger.info(`register emoji host=${host}, name=${name}`);
 
-		return await Emojis.save({
+		return await Emojis.insert({
 			id: genId(),
 			host,
 			name,
 			uri: tag.id,
-			url: tag.icon!.url,
+			originalUrl: tag.icon!.url,
+			publicUrl: tag.icon!.url,
 			updatedAt: new Date(),
 			aliases: [],
-		} as Partial<Emoji>);
+		} as Partial<Emoji>).then(x => Emojis.findOneOrFail(x.identifiers[0]));
 	}));
 }

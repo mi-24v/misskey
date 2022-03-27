@@ -1,18 +1,11 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { AuthSessions } from '@/models/index';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { AuthSessions } from '@/models/index.js';
 
 export const meta = {
 	tags: ['auth'],
 
-	requireCredential: false as const,
-
-	params: {
-		token: {
-			validator: $.str,
-		},
-	},
+	requireCredential: false,
 
 	errors: {
 		noSuchSession: {
@@ -23,28 +16,37 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			id: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'id',
 			},
 			app: {
-				type: 'object' as const,
-				optional: false as const, nullable: false as const,
+				type: 'object',
+				optional: false, nullable: false,
 				ref: 'App',
 			},
 			token: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		token: { type: 'string' },
+	},
+	required: ['token'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Lookup session
 	const session = await AuthSessions.findOne({
 		token: ps.token,

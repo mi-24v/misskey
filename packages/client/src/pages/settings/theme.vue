@@ -87,6 +87,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onActivated, onMounted, ref, watch } from 'vue';
+import * as JSON5 from 'json5';
 import FormSwitch from '@/components/form/switch.vue';
 import FormSelect from '@/components/form/select.vue';
 import FormGroup from '@/components/form/group.vue';
@@ -99,6 +100,8 @@ import { isDeviceDarkmode } from '@/scripts/is-device-darkmode';
 import { ColdDeviceStorage } from '@/store';
 import { i18n } from '@/i18n';
 import { defaultStore } from '@/store';
+import { instance } from '@/instance';
+import { concat, uniqueBy } from '@/scripts/array';
 import { fetchThemes, getThemes } from '@/theme-store';
 import * as symbols from '@/symbols';
 
@@ -116,15 +119,18 @@ export default defineComponent({
 
 	setup(props, { emit }) {
 		const INFO = {
-			title: i18n.locale.theme,
+			title: i18n.ts.theme,
 			icon: 'fas fa-palette',
 				bg: 'var(--bg)',
 		};
 
 		const installedThemes = ref(getThemes());
-		const themes = computed(() => builtinThemes.concat(installedThemes.value));
-		const darkThemes = computed(() => themes.value.filter(t => t.base == 'dark' || t.kind == 'dark'));
-		const lightThemes = computed(() => themes.value.filter(t => t.base == 'light' || t.kind == 'light'));
+		const instanceThemes = [];
+		if (instance.defaultLightTheme != null) instanceThemes.push(JSON5.parse(instance.defaultLightTheme));
+		if (instance.defaultDarkTheme != null) instanceThemes.push(JSON5.parse(instance.defaultDarkTheme));
+		const themes = computed(() => uniqueBy(instanceThemes.concat(builtinThemes.concat(installedThemes.value)), theme => theme.id));
+		const darkThemes = computed(() => themes.value.filter(t => t.base === 'dark' || t.kind === 'dark'));
+		const lightThemes = computed(() => themes.value.filter(t => t.base === 'light' || t.kind === 'light'));
 		const darkTheme = ColdDeviceStorage.ref('darkTheme');
 		const darkThemeId = computed({
 			get() {
@@ -163,10 +169,6 @@ export default defineComponent({
 			location.reload();
 		});
 
-		onMounted(() => {
-			emit('info', INFO);
-		});
-
 		onActivated(() => {
 			fetchThemes().then(() => {
 				installedThemes.value = getThemes();
@@ -188,7 +190,7 @@ export default defineComponent({
 			themesCount,
 			wallpaper,
 			setWallpaper(e) {
-				selectFile(e.currentTarget || e.target, null).then(file => {
+				selectFile(e.currentTarget ?? e.target, null).then(file => {
 					wallpaper.value = file.url;
 				});
 			},

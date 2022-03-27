@@ -1,9 +1,9 @@
 import { EntityRepository, Repository } from 'typeorm';
-import { Users } from '../index';
-import { Following } from '@/models/entities/following';
-import { awaitAll } from '@/prelude/await-all';
-import { Packed } from '@/misc/schema';
-import { User } from '@/models/entities/user';
+import { Users } from '../index.js';
+import { Following } from '@/models/entities/following.js';
+import { awaitAll } from '@/prelude/await-all.js';
+import { Packed } from '@/misc/schema.js';
+import { User } from '@/models/entities/user.js';
 
 type LocalFollowerFollowing = Following & {
 	followerHost: null;
@@ -84,41 +84,3 @@ export class FollowingRepository extends Repository<Following> {
 		return Promise.all(followings.map(x => this.pack(x, me, opts)));
 	}
 }
-
-export const packedFollowingSchema = {
-	type: 'object' as const,
-	optional: false as const, nullable: false as const,
-	properties: {
-		id: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		createdAt: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'date-time',
-		},
-		followeeId: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-		},
-		followee: {
-			type: 'object' as const,
-			optional: true as const, nullable: false as const,
-			ref: 'User' as const,
-		},
-		followerId: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-		},
-		follower: {
-			type: 'object' as const,
-			optional: true as const, nullable: false as const,
-			ref: 'User' as const,
-		},
-	},
-};

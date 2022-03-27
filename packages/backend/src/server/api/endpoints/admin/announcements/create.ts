@@ -1,71 +1,69 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { Announcements } from '@/models/index';
-import { genId } from '@/misc/gen-id';
+import define from '../../../define.js';
+import { Announcements } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-		title: {
-			validator: $.str.min(1),
-		},
-		text: {
-			validator: $.str.min(1),
-		},
-		imageUrl: {
-			validator: $.nullable.str.min(1),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			id: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'id',
 				example: 'xxxxxxxxxx',
 			},
 			createdAt: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'date-time',
 			},
 			updatedAt: {
-				type: 'string' as const,
-				optional: false as const, nullable: true as const,
+				type: 'string',
+				optional: false, nullable: true,
 				format: 'date-time',
 			},
 			title: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			text: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			imageUrl: {
-				type: 'string' as const,
-				optional: false as const, nullable: true as const,
+				type: 'string',
+				optional: false, nullable: true,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
-	const announcement = await Announcements.save({
+export const paramDef = {
+	type: 'object',
+	properties: {
+		title: { type: 'string', minLength: 1 },
+		text: { type: 'string', minLength: 1 },
+		imageUrl: { type: 'string', nullable: true, minLength: 1 },
+	},
+	required: ['title', 'text', 'imageUrl'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
+	const announcement = await Announcements.insert({
 		id: genId(),
 		createdAt: new Date(),
 		updatedAt: null,
 		title: ps.title,
 		text: ps.text,
 		imageUrl: ps.imageUrl,
-	});
+	}).then(x => Announcements.findOneOrFail(x.identifiers[0]));
 
-	return announcement;
+	return Object.assign({}, announcement, { createdAt: announcement.createdAt.toISOString(), updatedAt: null });
 });

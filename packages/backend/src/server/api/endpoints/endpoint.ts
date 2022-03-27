@@ -1,20 +1,22 @@
-import $ from 'cafy';
-import define from '../define';
-import endpoints from '../endpoints';
+import define from '../define.js';
+import endpoints from '../endpoints.js';
 
 export const meta = {
-	requireCredential: false as const,
+	requireCredential: false,
 
 	tags: ['meta'],
+} as const;
 
-	params: {
-		endpoint: {
-			validator: $.str,
-		},
+export const paramDef = {
+	type: 'object',
+	properties: {
+		endpoint: { type: 'string' },
 	},
-};
+	required: ['endpoint'],
+} as const;
 
-export default define(meta, async (ps) => {
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const ep = endpoints.find(x => x.name === ps.endpoint);
 	if (ep == null) return null;
 	return {

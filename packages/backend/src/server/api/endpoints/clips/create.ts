@@ -1,37 +1,33 @@
-import $ from 'cafy';
-import define from '../../define';
-import { genId } from '@/misc/gen-id';
-import { Clips } from '@/models/index';
+import define from '../../define.js';
+import { genId } from '@/misc/gen-id.js';
+import { Clips } from '@/models/index.js';
 
 export const meta = {
 	tags: ['clips'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:account',
 
-	params: {
-		name: {
-			validator: $.str.range(1, 100),
-		},
-
-		isPublic: {
-			validator: $.optional.bool,
-		},
-
-		description: {
-			validator: $.optional.nullable.str.range(1, 2048),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'Clip',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		name: { type: 'string', minLength: 1, maxLength: 100 },
+		isPublic: { type: 'boolean' },
+		description: { type: 'string', nullable: true, minLength: 1, maxLength: 2048 },
+	},
+	required: ['name'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const clip = await Clips.insert({
 		id: genId(),
 		createdAt: new Date(),

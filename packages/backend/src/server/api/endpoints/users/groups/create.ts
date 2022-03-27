@@ -1,31 +1,33 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { UserGroups, UserGroupJoinings } from '@/models/index';
-import { genId } from '@/misc/gen-id';
-import { UserGroup } from '@/models/entities/user-group';
-import { UserGroupJoining } from '@/models/entities/user-group-joining';
+import define from '../../../define.js';
+import { UserGroups, UserGroupJoinings } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
+import { UserGroup } from '@/models/entities/user-group.js';
+import { UserGroupJoining } from '@/models/entities/user-group-joining.js';
 
 export const meta = {
 	tags: ['groups'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:user-groups',
 
-	params: {
-		name: {
-			validator: $.str.range(1, 100),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'UserGroup',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		name: { type: 'string', minLength: 1, maxLength: 100 },
+	},
+	required: ['name'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const userGroup = await UserGroups.insert({
 		id: genId(),
 		createdAt: new Date(),

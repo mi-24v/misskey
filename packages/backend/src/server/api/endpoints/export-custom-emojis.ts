@@ -1,17 +1,23 @@
-import $ from 'cafy';
-import define from '../define';
-import { createExportCustomEmojisJob } from '@/queue/index';
+import define from '../define.js';
+import { createExportCustomEmojisJob } from '@/queue/index.js';
 import ms from 'ms';
 
 export const meta = {
 	secure: true,
-	requireCredential: true as const,
+	requireCredential: true,
 	limit: {
 		duration: ms('1hour'),
 		max: 1,
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	createExportCustomEmojisJob(user);
 });

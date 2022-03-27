@@ -1,5 +1,5 @@
-import config from '@/config/index';
-import { Emoji } from '@/models/entities/emoji';
+import config from '@/config/index.js';
+import { Emoji } from '@/models/entities/emoji.js';
 
 export default (emoji: Emoji) => ({
 	id: `${config.url}/emojis/${emoji.name}`,
@@ -9,6 +9,6 @@ export default (emoji: Emoji) => ({
 	icon: {
 		type: 'Image',
 		mediaType: emoji.type || 'image/png',
-		url: emoji.url,
+		url: emoji.publicUrl || emoji.originalUrl, // || emoji.originalUrl してるのは後方互換性のため
 	},
 });

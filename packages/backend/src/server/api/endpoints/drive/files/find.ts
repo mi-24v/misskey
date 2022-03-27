@@ -1,38 +1,35 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { DriveFiles } from '@/models/index';
+import define from '../../../define.js';
+import { DriveFiles } from '@/models/index.js';
 
 export const meta = {
-	requireCredential: true as const,
+	requireCredential: true,
 
 	tags: ['drive'],
 
 	kind: 'read:drive',
 
-	params: {
-		name: {
-			validator: $.str,
-		},
-
-		folderId: {
-			validator: $.optional.nullable.type(ID),
-			default: null,
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			ref: 'DriveFile',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		name: { type: 'string' },
+		folderId: { type: 'string', format: 'misskey:id', nullable: true, default: null },
+	},
+	required: ['name'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const files = await DriveFiles.find({
 		name: ps.name,
 		userId: user.id,

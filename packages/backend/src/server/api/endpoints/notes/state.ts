@@ -1,40 +1,41 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { NoteFavorites, Notes, NoteThreadMutings, NoteWatchings } from '@/models/index';
+import define from '../../define.js';
+import { NoteFavorites, Notes, NoteThreadMutings, NoteWatchings } from '@/models/index.js';
 
 export const meta = {
 	tags: ['notes'],
 
-	requireCredential: true as const,
-
-	params: {
-		noteId: {
-			validator: $.type(ID),
-		},
-	},
+	requireCredential: true,
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			isFavorited: {
-				type: 'boolean' as const,
-				optional: false as const, nullable: false as const,
+				type: 'boolean',
+				optional: false, nullable: false,
 			},
 			isWatching: {
-				type: 'boolean' as const,
-				optional: false as const, nullable: false as const,
+				type: 'boolean',
+				optional: false, nullable: false,
 			},
 			isMutedThread: {
-				type: 'boolean' as const,
-				optional: false as const, nullable: false as const,
+				type: 'boolean',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		noteId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['noteId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const note = await Notes.findOneOrFail(ps.noteId);
 
 	const [favorite, watching, threadMuting] = await Promise.all([

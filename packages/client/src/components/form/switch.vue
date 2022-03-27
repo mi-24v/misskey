@@ -13,51 +13,40 @@
 		<i class="check fas fa-check"></i>
 	</span>
 	<span class="label">
-		<span @click="toggle"><slot></slot></span>
+		<!-- TODO: 無名slotの方は廃止 -->
+		<span @click="toggle"><slot name="label"></slot><slot></slot></span>
 		<p class="caption"><slot name="caption"></slot></p>
 	</span>
 </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, toRefs } from 'vue';
+<script lang="ts" setup>
+import { toRefs, Ref } from 'vue';
 import * as os from '@/os';
 import Ripple from '@/components/ripple.vue';
 
-export default defineComponent({
-	props: {
-		modelValue: {
-			type: Boolean,
-			default: false
-		},
-		disabled: {
-			type: Boolean,
-			default: false
-		}
-	},
+const props = defineProps<{
+	modelValue: boolean | Ref<boolean>;
+	disabled?: boolean;
+}>();
 
-	setup(props, context) {
-		const button = ref<HTMLElement>();
-		const checked = toRefs(props).modelValue;
-		const toggle = () => {
-			if (props.disabled) return;
-			context.emit('update:modelValue', !checked.value);
+const emit = defineEmits<{
+	(e: 'update:modelValue', v: boolean): void;
+}>();
 
-			if (!checked.value) {
-				const rect = button.value.getBoundingClientRect();
-				const x = rect.left + (button.value.offsetWidth / 2);
-				const y = rect.top + (button.value.offsetHeight / 2);
-				os.popup(Ripple, { x, y, particle: false }, {}, 'end');
-			}
-		};
+let button = $ref<HTMLElement>();
+const checked = toRefs(props).modelValue;
+const toggle = () => {
+	if (props.disabled) return;
+	emit('update:modelValue', !checked.value);
 
-		return {
-			button,
-			checked,
-			toggle,
-		};
-	},
-});
+	if (!checked.value) {
+		const rect = button.getBoundingClientRect();
+		const x = rect.left + (button.offsetWidth / 2);
+		const y = rect.top + (button.offsetHeight / 2);
+		os.popup(Ripple, { x, y, particle: false }, {}, 'end');
+	}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -110,7 +99,7 @@ export default defineComponent({
 	}
 
 	> .label {
-		margin-left: 16px;
+		margin-left: 12px;
 		margin-top: 2px;
 		display: block;
 		transition: inherit;

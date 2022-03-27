@@ -1,38 +1,31 @@
 <template>
 <div class="mk-notification-toast" :style="{ zIndex }">
-	<transition name="notification-toast" appear @after-leave="$emit('closed')">
+	<transition :name="$store.state.animation ? 'notification-toast' : ''" appear @after-leave="$emit('closed')">
 		<XNotification v-if="showing" :notification="notification" class="notification _acrylic"/>
 	</transition>
 </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { onMounted } from 'vue';
 import XNotification from './notification.vue';
 import * as os from '@/os';
 
-export default defineComponent({
-	components: {
-		XNotification
-	},
-	props: {
-		notification: {
-			type: Object,
-			required: true
-		}
-	},
-	emits: ['closed'],
-	data() {
-		return {
-			showing: true,
-			zIndex: os.claimZIndex('high'),
-		};
-	},
-	mounted() {
-		setTimeout(() => {
-			this.showing = false;
-		}, 6000);
-	}
+defineProps<{
+	notification: any; // TODO
+}>();
+
+const emit = defineEmits<{
+	(ev: 'closed'): void;
+}>();
+
+const zIndex = os.claimZIndex('high');
+let showing = $ref(true);
+
+onMounted(() => {
+	window.setTimeout(() => {
+		showing = false;
+	}, 6000);
 });
 </script>
 
@@ -60,7 +53,7 @@ export default defineComponent({
 	}
 
 	@media (max-width: 500px) {
-		bottom: 92px;
+		bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
 		padding: 0 8px;
 	}
 

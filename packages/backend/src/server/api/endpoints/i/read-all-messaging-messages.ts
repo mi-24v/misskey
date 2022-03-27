@@ -1,19 +1,23 @@
-import { publishMainStream } from '@/services/stream';
-import define from '../../define';
-import { MessagingMessages, UserGroupJoinings } from '@/models/index';
+import { publishMainStream } from '@/services/stream.js';
+import define from '../../define.js';
+import { MessagingMessages, UserGroupJoinings } from '@/models/index.js';
 
 export const meta = {
 	tags: ['account', 'messaging'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:account',
+} as const;
 
-	params: {
-	},
-};
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
 
-export default define(meta, async (ps, user) => {
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Update documents
 	await MessagingMessages.update({
 		recipientId: user.id,

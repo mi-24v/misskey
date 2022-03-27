@@ -1,78 +1,72 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { Announcements, AnnouncementReads } from '@/models/index';
-import { makePaginationQuery } from '../../../common/make-pagination-query';
+import define from '../../../define.js';
+import { Announcements, AnnouncementReads } from '@/models/index.js';
+import { makePaginationQuery } from '../../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				id: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'id',
 					example: 'xxxxxxxxxx',
 				},
 				createdAt: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'date-time',
 				},
 				updatedAt: {
-					type: 'string' as const,
-					optional: false as const, nullable: true as const,
+					type: 'string',
+					optional: false, nullable: true,
 					format: 'date-time',
 				},
 				text: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 				title: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 				imageUrl: {
-					type: 'string' as const,
-					optional: false as const, nullable: true as const,
+					type: 'string',
+					optional: false, nullable: true,
 				},
 				reads: {
-					type: 'number' as const,
-					optional: false as const, nullable: false as const,
+					type: 'number',
+					optional: false, nullable: false,
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const query = makePaginationQuery(Announcements.createQueryBuilder('announcement'), ps.sinceId, ps.untilId);
 
-	const announcements = await query.take(ps.limit!).getMany();
+	const announcements = await query.take(ps.limit).getMany();
 
 	for (const announcement of announcements) {
 		(announcement as any).reads = await AnnouncementReads.count({

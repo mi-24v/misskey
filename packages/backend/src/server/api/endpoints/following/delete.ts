@@ -1,11 +1,9 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
 import ms from 'ms';
-import deleteFollowing from '@/services/following/delete';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { getUser } from '../../common/getters';
-import { Followings, Users } from '@/models/index';
+import deleteFollowing from '@/services/following/delete.js';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { getUser } from '../../common/getters.js';
+import { Followings, Users } from '@/models/index.js';
 
 export const meta = {
 	tags: ['following', 'users'],
@@ -15,15 +13,9 @@ export const meta = {
 		max: 100,
 	},
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:following',
-
-	params: {
-		userId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchUser: {
@@ -46,13 +38,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
-		ref: 'User',
+		type: 'object',
+		optional: false, nullable: false,
+		ref: 'UserLite',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		userId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['userId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const follower = user;
 
 	// Check if the followee is yourself

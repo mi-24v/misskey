@@ -1,29 +1,21 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { ClipNotes, Clips } from '@/models/index';
-import { getNote } from '../../common/getters';
-import { ApiError } from '../../error';
+import define from '../../define.js';
+import { ClipNotes, Clips } from '@/models/index.js';
+import { getNote } from '../../common/getters.js';
+import { ApiError } from '../../error.js';
 import { In } from 'typeorm';
 
 export const meta = {
 	tags: ['clips', 'notes'],
 
-	requireCredential: false as const,
-
-	params: {
-		noteId: {
-			validator: $.type(ID),
-		},
-	},
+	requireCredential: false,
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
-			ref: 'Note',
+			type: 'object',
+			optional: false, nullable: false,
+			ref: 'Clip',
 		},
 	},
 
@@ -34,9 +26,18 @@ export const meta = {
 			id: '47db1a1c-b0af-458d-8fb4-986e4efafe1e',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		noteId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['noteId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	const note = await getNote(ps.noteId).catch(e => {
 		if (e.id === '9725d0ce-ba28-4dde-95a7-2cbb2c15de24') throw new ApiError(meta.errors.noSuchNote);
 		throw e;

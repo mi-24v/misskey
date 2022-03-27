@@ -50,11 +50,11 @@ export default defineComponent({
 			} : null),
 			clip: null,
 			pagination: {
-				endpoint: 'clips/notes',
+				endpoint: 'clips/notes' as const,
 				limit: 10,
-				params: () => ({
+				params: computed(() => ({
 					clipId: this.clipId,
-				})
+				}))
 			},
 		};
 	},
@@ -127,7 +127,7 @@ export default defineComponent({
 						clipId: this.clip.id,
 					});
 				}
-			} : undefined], ev.currentTarget || ev.target);
+			} : undefined], ev.currentTarget ?? ev.target);
 		}
 	}
 });

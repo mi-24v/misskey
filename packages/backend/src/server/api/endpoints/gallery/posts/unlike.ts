@@ -1,21 +1,13 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { GalleryPosts, GalleryLikes } from '@/models/index';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { GalleryPosts, GalleryLikes } from '@/models/index.js';
 
 export const meta = {
 	tags: ['gallery'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:gallery-likes',
-
-	params: {
-		postId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchPost: {
@@ -30,9 +22,18 @@ export const meta = {
 			id: 'e3e8e06e-be37-41f7-a5b4-87a8250288f0',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		postId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['postId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const post = await GalleryPosts.findOne(ps.postId);
 	if (post == null) {
 		throw new ApiError(meta.errors.noSuchPost);

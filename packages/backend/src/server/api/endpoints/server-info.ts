@@ -1,20 +1,21 @@
-import * as os from 'os';
-import * as si from 'systeminformation';
-import define from '../define';
+import * as os from 'node:os';
+import si from 'systeminformation';
+import define from '../define.js';
 
 export const meta = {
-	requireCredential: false as const,
-
-	desc: {
-	},
+	requireCredential: false,
 
 	tags: ['meta'],
+} as const;
 
-	params: {
-	},
-};
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
 
-export default define(meta, async () => {
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const memStats = await si.mem();
 	const fsStats = await si.fsSize();
 

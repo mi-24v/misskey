@@ -1,10 +1,10 @@
 import { Brackets } from 'typeorm';
-import define from '../../define';
-import { fetchMeta } from '@/misc/fetch-meta';
-import { Notes } from '@/models/index';
-import { Note } from '@/models/entities/note';
-import { safeForSql } from '@/misc/safe-for-sql';
-import { normalizeForSearch } from '@/misc/normalize-for-search';
+import define from '../../define.js';
+import { fetchMeta } from '@/misc/fetch-meta.js';
+import { Notes } from '@/models/index.js';
+import { Note } from '@/models/entities/note.js';
+import { safeForSql } from '@/misc/safe-for-sql.js';
+import { normalizeForSearch } from '@/misc/normalize-for-search.js';
 
 /*
 トレンドに載るためには「『直近a分間のユニーク投稿数が今からa分前～今からb分前の間のユニーク投稿数のn倍以上』のハッシュタグの上位5位以内に入る」ことが必要
@@ -23,37 +23,44 @@ const max = 5;
 export const meta = {
 	tags: ['hashtags'],
 
-	requireCredential: false as const,
+	requireCredential: false,
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				tag: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 				chart: {
-					type: 'array' as const,
-					optional: false as const, nullable: false as const,
+					type: 'array',
+					optional: false, nullable: false,
 					items: {
-						type: 'number' as const,
-						optional: false as const, nullable: false as const,
+						type: 'number',
+						optional: false, nullable: false,
 					},
 				},
 				usersCount: {
-					type: 'number' as const,
-					optional: false as const, nullable: false as const,
+					type: 'number',
+					optional: false, nullable: false,
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async () => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const instance = await fetchMeta(true);
 	const hiddenTags = instance.hiddenTags.map(t => normalizeForSearch(t));
 

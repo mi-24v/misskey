@@ -1,7 +1,8 @@
 <template>
 <div ref="elRef" v-size="{ max: [500, 600] }" class="qglefbjs" :class="notification.type">
 	<div class="head">
-		<MkAvatar v-if="notification.user" class="icon" :user="notification.user"/>
+		<MkAvatar v-if="notification.type === 'pollEnded'" class="icon" :user="notification.note.user"/>
+		<MkAvatar v-else-if="notification.user" class="icon" :user="notification.user"/>
 		<img v-else-if="notification.icon" class="icon" :src="notification.icon" alt=""/>
 		<div class="sub-icon" :class="notification.type">
 			<i v-if="notification.type === 'follow'" class="fas fa-plus"></i>
@@ -13,6 +14,7 @@
 			<i v-else-if="notification.type === 'mention'" class="fas fa-at"></i>
 			<i v-else-if="notification.type === 'quote'" class="fas fa-quote-left"></i>
 			<i v-else-if="notification.type === 'pollVote'" class="fas fa-poll-h"></i>
+			<i v-else-if="notification.type === 'pollEnded'" class="fas fa-poll-h"></i>
 			<!-- notification.reaction が null になることはまずないが、ここでoptional chaining使うと一部ブラウザで刺さるので念の為 -->
 			<XReactionIcon v-else-if="notification.type === 'reaction'"
 				ref="reactionRef"
@@ -24,7 +26,8 @@
 	</div>
 	<div class="tail">
 		<header>
-			<MkA v-if="notification.user" v-user-preview="notification.user.id" class="name" :to="userPage(notification.user)"><MkUserName :user="notification.user"/></MkA>
+			<span v-if="notification.type === 'pollEnded'">{{ i18n.ts._notification.pollEnded }}</span>
+			<MkA v-else-if="notification.user" v-user-preview="notification.user.id" class="name" :to="userPage(notification.user)"><MkUserName :user="notification.user"/></MkA>
 			<span v-else>{{ notification.header }}</span>
 			<MkTime v-if="withTime" :time="notification.createdAt" class="time"/>
 		</header>
@@ -52,6 +55,11 @@
 			<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!full" :custom-emojis="notification.note.emojis"/>
 			<i class="fas fa-quote-right"></i>
 		</MkA>
+		<MkA v-if="notification.type === 'pollEnded'" class="text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
+			<i class="fas fa-quote-left"></i>
+			<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!full" :custom-emojis="notification.note.emojis"/>
+			<i class="fas fa-quote-right"></i>
+		</MkA>
 		<span v-if="notification.type === 'follow'" class="text" style="opacity: 0.6;">{{ $ts.youGotNewFollower }}<div v-if="full"><MkFollowButton :user="notification.user" :full="true"/></div></span>
 		<span v-if="notification.type === 'followRequestAccepted'" class="text" style="opacity: 0.6;">{{ $ts.followRequestAccepted }}</span>
 		<span v-if="notification.type === 'receiveFollowRequest'" class="text" style="opacity: 0.6;">{{ $ts.receiveFollowRequest }}<div v-if="full && !followRequestDone"><button class="_textButton" @click="acceptFollowRequest()">{{ $ts.accept }}</button> | <button class="_textButton" @click="rejectFollowRequest()">{{ $ts.reject }}</button></div></span>
@@ -74,6 +82,7 @@ import { notePage } from '@/filters/note';
 import { userPage } from '@/filters/user';
 import { i18n } from '@/i18n';
 import * as os from '@/os';
+import { stream } from '@/stream';
 import { useTooltip } from '@/scripts/use-tooltip';
 
 export default defineComponent({
@@ -106,7 +115,7 @@ export default defineComponent({
 			if (!props.notification.isRead) {
 				const readObserver = new IntersectionObserver((entries, observer) => {
 					if (!entries.some(entry => entry.isIntersecting)) return;
-					os.stream.send('readNotification', {
+					stream.send('readNotification', {
 						id: props.notification.id
 					});
 					observer.disconnect();
@@ -114,7 +123,7 @@ export default defineComponent({
 
 				readObserver.observe(elRef.value);
 
-				const connection = os.stream.useChannel('main');
+				const connection = stream.useChannel('main');
 				connection.on('readAllNotifications', () => readObserver.disconnect());
 
 				onUnmounted(() => {
@@ -152,7 +161,7 @@ export default defineComponent({
 				showing,
 				reaction: props.notification.reaction ? props.notification.reaction.replace(/^:(\w+):$/, ':$1@.:') : props.notification.reaction,
 				emojis: props.notification.note.emojis,
-				source: reactionRef.value.$el,
+				targetElement: reactionRef.value.$el,
 			}, {}, 'closed');
 		});
 
@@ -168,6 +177,7 @@ export default defineComponent({
 			rejectGroupInvitation,
 			elRef,
 			reactionRef,
+			i18n,
 		};
 	},
 });
@@ -269,6 +279,12 @@ export default defineComponent({
 			}
 
 			&.pollVote {
+				padding: 3px;
+				background: #88a6b7;
+				pointer-events: none;
+			}
+
+			&.pollEnded {
 				padding: 3px;
 				background: #88a6b7;
 				pointer-events: none;

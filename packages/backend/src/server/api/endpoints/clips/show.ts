@@ -1,21 +1,13 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { Clips } from '@/models/index';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { Clips } from '@/models/index.js';
 
 export const meta = {
 	tags: ['clips', 'account'],
 
-	requireCredential: false as const,
+	requireCredential: false,
 
 	kind: 'read:account',
-
-	params: {
-		clipId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchClip: {
@@ -26,13 +18,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'Clip',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		clipId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['clipId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	// Fetch the clip
 	const clip = await Clips.findOne({
 		id: ps.clipId,

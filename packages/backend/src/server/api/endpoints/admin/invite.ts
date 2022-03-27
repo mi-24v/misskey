@@ -1,32 +1,37 @@
 import rndstr from 'rndstr';
-import define from '../../define';
-import { RegistrationTickets } from '@/models/index';
-import { genId } from '@/misc/gen-id';
+import define from '../../define.js';
+import { RegistrationTickets } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			code: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				example: '2ERUA5VR',
 				maxLength: 8,
 				minLength: 8,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async () => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const code = rndstr({
 		length: 8,
 		chars: '2-9A-HJ-NP-Z', // [0-9A-Z] w/o [01IO] (32 patterns)

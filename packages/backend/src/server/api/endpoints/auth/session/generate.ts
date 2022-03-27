@@ -1,33 +1,26 @@
 import { v4 as uuid } from 'uuid';
-import $ from 'cafy';
-import config from '@/config/index';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { Apps, AuthSessions } from '@/models/index';
-import { genId } from '@/misc/gen-id';
+import config from '@/config/index.js';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { Apps, AuthSessions } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
 
 export const meta = {
 	tags: ['auth'],
 
-	requireCredential: false as const,
-
-	params: {
-		appSecret: {
-			validator: $.str,
-		},
-	},
+	requireCredential: false,
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			token: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			url: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'url',
 			},
 		},
@@ -40,9 +33,18 @@ export const meta = {
 			id: '92f93e63-428e-4f2f-a5a4-39e1407fe998',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		appSecret: { type: 'string' },
+	},
+	required: ['appSecret'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	// Lookup app
 	const app = await Apps.findOne({
 		secret: ps.appSecret,
@@ -56,12 +58,12 @@ export default define(meta, async (ps) => {
 	const token = uuid();
 
 	// Create session token document
-	const doc = await AuthSessions.save({
+	const doc = await AuthSessions.insert({
 		id: genId(),
 		createdAt: new Date(),
 		appId: app.id,
 		token: token,
-	});
+	}).then(x => AuthSessions.findOneOrFail(x.identifiers[0]));
 
 	return {
 		token: doc.token,

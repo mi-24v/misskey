@@ -1,7 +1,7 @@
 import { PrimaryColumn, Entity, Index, JoinColumn, Column, ManyToOne } from 'typeorm';
-import { User } from './user';
-import { DriveFolder } from './drive-folder';
-import { id } from '../id';
+import { User } from './user.js';
+import { DriveFolder } from './drive-folder.js';
+import { id } from '../id.js';
 
 @Entity()
 @Index(['userId', 'folderId', 'id'])
@@ -100,6 +100,11 @@ export class DriveFile {
 		comment: 'The URL of the webpublic of the DriveFile.',
 	})
 	public webpublicUrl: string | null;
+
+	@Column('varchar', {
+		length: 128, nullable: true,
+	})
+	public webpublicType: string | null;
 
 	@Index({ unique: true })
 	@Column('varchar', {

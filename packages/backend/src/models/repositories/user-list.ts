@@ -1,7 +1,7 @@
 import { EntityRepository, Repository } from 'typeorm';
-import { UserList } from '@/models/entities/user-list';
-import { UserListJoinings } from '../index';
-import { Packed } from '@/misc/schema';
+import { UserList } from '@/models/entities/user-list.js';
+import { UserListJoinings } from '../index.js';
+import { Packed } from '@/misc/schema.js';
 
 @EntityRepository(UserList)
 export class UserListRepository extends Repository<UserList> {
@@ -22,34 +22,3 @@ export class UserListRepository extends Repository<UserList> {
 		};
 	}
 }
-
-export const packedUserListSchema = {
-	type: 'object' as const,
-	optional: false as const, nullable: false as const,
-	properties: {
-		id: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		createdAt: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'date-time',
-		},
-		name: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-		},
-		userIds: {
-			type: 'array' as const,
-			nullable: false as const, optional: true as const,
-			items: {
-				type: 'string' as const,
-				nullable: false as const, optional: false as const,
-				format: 'id',
-			},
-		},
-	},
-};

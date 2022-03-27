@@ -1,41 +1,21 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { getUser } from '../../../common/getters';
-import { MessagingMessages, DriveFiles, UserGroups, UserGroupJoinings, Blockings } from '@/models/index';
-import { User } from '@/models/entities/user';
-import { UserGroup } from '@/models/entities/user-group';
-import { createMessage } from '@/services/messages/create';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { getUser } from '../../../common/getters.js';
+import { MessagingMessages, DriveFiles, UserGroups, UserGroupJoinings, Blockings } from '@/models/index.js';
+import { User } from '@/models/entities/user.js';
+import { UserGroup } from '@/models/entities/user-group.js';
+import { createMessage } from '@/services/messages/create.js';
 
 export const meta = {
 	tags: ['messaging'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:messaging',
 
-	params: {
-		userId: {
-			validator: $.optional.type(ID),
-		},
-
-		groupId: {
-			validator: $.optional.type(ID),
-		},
-
-		text: {
-			validator: $.optional.str.pipe(MessagingMessages.validateText),
-		},
-
-		fileId: {
-			validator: $.optional.type(ID),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'MessagingMessage',
 	},
 
@@ -82,9 +62,21 @@ export const meta = {
 			id: 'c15a5199-7422-4968-941a-2a462c478f7d',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		userId: { type: 'string', format: 'misskey:id' },
+		groupId: { type: 'string', format: 'misskey:id' },
+		text: { type: 'string', nullable: true, maxLength: 3000 },
+		fileId: { type: 'string', format: 'misskey:id' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	let recipientUser: User | undefined;
 	let recipientGroup: UserGroup | undefined;
 

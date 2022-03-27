@@ -1,14 +1,14 @@
-import * as Bull from 'bull';
+import Bull from 'bull';
 
-import { queueLogger } from '../../logger';
-import * as Acct from 'misskey-js/built/acct';
-import { resolveUser } from '@/remote/resolve-user';
-import { pushUserToUserList } from '@/services/user-list/push';
-import { downloadTextFile } from '@/misc/download-text-file';
-import { isSelfHost, toPuny } from '@/misc/convert-host';
-import { DriveFiles, Users, UserLists, UserListJoinings } from '@/models/index';
-import { genId } from '@/misc/gen-id';
-import { DbUserImportJobData } from '@/queue/types';
+import { queueLogger } from '../../logger.js';
+import * as Acct from '@/misc/acct.js';
+import { resolveUser } from '@/remote/resolve-user.js';
+import { pushUserToUserList } from '@/services/user-list/push.js';
+import { downloadTextFile } from '@/misc/download-text-file.js';
+import { isSelfHost, toPuny } from '@/misc/convert-host.js';
+import { DriveFiles, Users, UserLists, UserListJoinings } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
+import { DbUserImportJobData } from '@/queue/types.js';
 
 const logger = queueLogger.createSubLogger('import-user-lists');
 
@@ -46,13 +46,12 @@ export async function importUserLists(job: Bull.Job<DbUserImportJobData>, done: 
 			});
 
 			if (list == null) {
-				list = await UserLists.save({
+				list = await UserLists.insert({
 					id: genId(),
 					createdAt: new Date(),
 					userId: user.id,
 					name: listName,
-					userIds: [],
-				});
+				}).then(x => UserLists.findOneOrFail(x.identifiers[0]));
 			}
 
 			let target = isSelfHost(host!) ? await Users.findOne({
@@ -67,9 +66,9 @@ export async function importUserLists(job: Bull.Job<DbUserImportJobData>, done: 
 				target = await resolveUser(username, host);
 			}
 
-			if (await UserListJoinings.findOne({ userListId: list.id, userId: target.id }) != null) continue;
+			if (await UserListJoinings.findOne({ userListId: list!.id, userId: target.id }) != null) continue;
 
-			pushUserToUserList(target, list);
+			pushUserToUserList(target, list!);
 		} catch (e) {
 			logger.warn(`Error in line:${linenum} ${e}`);
 		}

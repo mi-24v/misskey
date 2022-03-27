@@ -13,10 +13,9 @@ if (localStorage.getItem('accounts') != null) {
 }
 //#endregion
 
-import * as Sentry from '@sentry/browser';
-import { Integrations } from '@sentry/tracing';
 import { computed, createApp, watch, markRaw, version as vueVersion } from 'vue';
 import compareVersions from 'compare-versions';
+import * as JSON5 from 'json5';
 
 import widgets from '@/widgets';
 import directives from '@/directives';
@@ -26,14 +25,15 @@ import { router } from '@/router';
 import { applyTheme } from '@/scripts/theme';
 import { isDeviceDarkmode } from '@/scripts/is-device-darkmode';
 import { i18n } from '@/i18n';
-import { stream, confirm, alert, post, popup, toast } from '@/os';
+import { confirm, alert, post, popup, toast } from '@/os';
+import { stream } from '@/stream';
 import * as sound from '@/scripts/sound';
 import { $i, refreshAccount, login, updateAccount, signout } from '@/account';
 import { defaultStore, ColdDeviceStorage } from '@/store';
 import { fetchInstance, instance } from '@/instance';
 import { makeHotkey } from '@/scripts/hotkey';
 import { search } from '@/scripts/search';
-import { isMobile } from '@/scripts/is-mobile';
+import { deviceKind } from '@/scripts/device-kind';
 import { initializeSw } from '@/scripts/initialize-sw';
 import { reloadChannel } from '@/scripts/unison-reload';
 import { reactionPicker } from '@/scripts/reaction-picker';
@@ -73,18 +73,6 @@ if (_DEV_) {
 	});
 }
 
-if (defaultStore.state.reportError && !_DEV_) {
-	Sentry.init({
-		dsn: 'https://fd273254a07a4b61857607a9ea05d629@o501808.ingest.sentry.io/5583438',
-		tracesSampleRate: 1.0,
-	});
-
-	Sentry.setTag('misskey_version', version);
-	Sentry.setTag('ui', ui);
-	Sentry.setTag('lang', lang);
-	Sentry.setTag('host', host);
-}
-
 // タッチデバイスでCSSの:hoverを機能させる
 document.addEventListener('touchend', () => {}, { passive: true });
 
@@ -105,11 +93,10 @@ window.addEventListener('resize', () => {
 //#endregion
 
 // If mobile, insert the viewport meta tag
-if (isMobile || window.innerWidth <= 1024) {
+if (['smartphone', 'tablet'].includes(deviceKind)) {
 	const viewport = document.getElementsByName('viewport').item(0);
 	viewport.setAttribute('content',
-		`${viewport.getAttribute('content')},minimum-scale=1,maximum-scale=1,user-scalable=no`);
-	document.head.appendChild(viewport);
+		`${viewport.getAttribute('content')}, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover`);
 }
 
 //#region Set lang attr
@@ -173,7 +160,9 @@ if ($i && $i.token) {
 }
 //#endregion
 
-fetchInstance().then(() => {
+const fetchInstanceMetaPromise = fetchInstance();
+
+fetchInstanceMetaPromise.then(() => {
 	localStorage.setItem('v', instance.version);
 
 	// Init service worker
@@ -185,7 +174,6 @@ const app = createApp(await (
 	!$i                               ? import('@/ui/visitor.vue') :
 	ui === 'deck'                     ? import('@/ui/deck.vue') :
 	ui === 'desktop'                  ? import('@/ui/desktop.vue') :
-	ui === 'chat'                     ? import('@/ui/chat/index.vue') :
 	ui === 'classic'                  ? import('@/ui/classic.vue') :
 	import('@/ui/universal.vue')
 ).then(x => x.default));
@@ -199,7 +187,7 @@ app.config.globalProperties = {
 	$store: defaultStore,
 	$instance: instance,
 	$t: i18n.t,
-	$ts: i18n.locale,
+	$ts: i18n.ts,
 };
 
 app.use(router);
@@ -282,6 +270,14 @@ window.matchMedia('(prefers-color-scheme: dark)').addListener(mql => {
 });
 //#endregion
 
+fetchInstanceMetaPromise.then(() => {
+	if (defaultStore.state.themeInitial) {
+		if (instance.defaultLightTheme != null) ColdDeviceStorage.set('lightTheme', JSON5.parse(instance.defaultLightTheme));
+		if (instance.defaultDarkTheme != null) ColdDeviceStorage.set('darkTheme', JSON5.parse(instance.defaultDarkTheme));
+		defaultStore.set('themeInitial', false);
+	}
+});
+
 // shortcut
 document.addEventListener('keydown', makeHotkey({
 	'd': () => {
@@ -313,8 +309,8 @@ stream.on('_disconnected_', async () => {
 		reloadDialogShowing = true;
 		const { canceled } = await confirm({
 			type: 'warning',
-			title: i18n.locale.disconnectedFromServer,
-			text: i18n.locale.reloadConfirm,
+			title: i18n.ts.disconnectedFromServer,
+			text: i18n.ts.reloadConfirm,
 		});
 		reloadDialogShowing = false;
 		if (!canceled) {
@@ -338,7 +334,7 @@ if ($i) {
 	if ($i.isDeleted) {
 		alert({
 			type: 'warning',
-			text: i18n.locale.accountDeletionInProgress,
+			text: i18n.ts.accountDeletionInProgress,
 		});
 	}
 

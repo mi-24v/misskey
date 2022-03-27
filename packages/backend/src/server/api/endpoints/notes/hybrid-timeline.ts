@@ -1,73 +1,29 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { fetchMeta } from '@/misc/fetch-meta';
-import { ApiError } from '../../error';
-import { makePaginationQuery } from '../../common/make-pagination-query';
-import { Followings, Notes } from '@/models/index';
+import define from '../../define.js';
+import { fetchMeta } from '@/misc/fetch-meta.js';
+import { ApiError } from '../../error.js';
+import { makePaginationQuery } from '../../common/make-pagination-query.js';
+import { Followings, Notes } from '@/models/index.js';
 import { Brackets } from 'typeorm';
-import { generateVisibilityQuery } from '../../common/generate-visibility-query';
-import { generateMutedUserQuery } from '../../common/generate-muted-user-query';
-import { generateMutedInstanceQuery } from '../../common/generate-muted-instance-query';
-import { activeUsersChart } from '@/services/chart/index';
-import { generateRepliesQuery } from '../../common/generate-replies-query';
-import { generateMutedNoteQuery } from '../../common/generate-muted-note-query';
-import { generateChannelQuery } from '../../common/generate-channel-query';
-import { generateBlockedUserQuery } from '../../common/generate-block-query';
+import { generateVisibilityQuery } from '../../common/generate-visibility-query.js';
+import { generateMutedUserQuery } from '../../common/generate-muted-user-query.js';
+import { generateMutedInstanceQuery } from '../../common/generate-muted-instance-query.js';
+import { activeUsersChart } from '@/services/chart/index.js';
+import { generateRepliesQuery } from '../../common/generate-replies-query.js';
+import { generateMutedNoteQuery } from '../../common/generate-muted-note-query.js';
+import { generateChannelQuery } from '../../common/generate-channel-query.js';
+import { generateBlockedUserQuery } from '../../common/generate-block-query.js';
 
 export const meta = {
 	tags: ['notes'],
 
-	requireCredential: true as const,
-
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-
-		sinceDate: {
-			validator: $.optional.num,
-		},
-
-		untilDate: {
-			validator: $.optional.num,
-		},
-
-		includeMyRenotes: {
-			validator: $.optional.bool,
-			default: true,
-		},
-
-		includeRenotedMyNotes: {
-			validator: $.optional.bool,
-			default: true,
-		},
-
-		includeLocalRenotes: {
-			validator: $.optional.bool,
-			default: true,
-		},
-
-		withFiles: {
-			validator: $.optional.bool,
-		},
-	},
+	requireCredential: true,
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			ref: 'Note',
 		},
 	},
@@ -79,9 +35,26 @@ export const meta = {
 			id: '620763f4-f621-4533-ab33-0577a1a3c342',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+		sinceDate: { type: 'integer' },
+		untilDate: { type: 'integer' },
+		includeMyRenotes: { type: 'boolean', default: true },
+		includeRenotedMyNotes: { type: 'boolean', default: true },
+		includeLocalRenotes: { type: 'boolean', default: true },
+		withFiles: { type: 'boolean' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const m = await fetchMeta();
 	if (m.disableLocalTimeline && !user.isAdmin && !user.isModerator) {
 		throw new ApiError(meta.errors.stlDisabled);
@@ -99,10 +72,16 @@ export default define(meta, async (ps, user) => {
 				.orWhere('(note.visibility = \'public\') AND (note.userHost IS NULL)');
 		}))
 		.innerJoinAndSelect('note.user', 'user')
+		.leftJoinAndSelect('user.avatar', 'avatar')
+		.leftJoinAndSelect('user.banner', 'banner')
 		.leftJoinAndSelect('note.reply', 'reply')
 		.leftJoinAndSelect('note.renote', 'renote')
 		.leftJoinAndSelect('reply.user', 'replyUser')
+		.leftJoinAndSelect('replyUser.avatar', 'replyUserAvatar')
+		.leftJoinAndSelect('replyUser.banner', 'replyUserBanner')
 		.leftJoinAndSelect('renote.user', 'renoteUser')
+		.leftJoinAndSelect('renoteUser.avatar', 'renoteUserAvatar')
+		.leftJoinAndSelect('renoteUser.banner', 'renoteUserBanner')
 		.setParameters(followingQuery.getParameters());
 
 	generateChannelQuery(query, user);
@@ -148,11 +127,11 @@ export default define(meta, async (ps, user) => {
 	}
 	//#endregion
 
-	const timeline = await query.take(ps.limit!).getMany();
+	const timeline = await query.take(ps.limit).getMany();
 
 	process.nextTick(() => {
 		if (user) {
-			activeUsersChart.update(user);
+			activeUsersChart.read(user);
 		}
 	});
 

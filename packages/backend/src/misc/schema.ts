@@ -1,32 +1,44 @@
-import { SimpleObj, SimpleSchema } from './simple-schema';
-import { packedUserSchema } from '@/models/repositories/user';
-import { packedNoteSchema } from '@/models/repositories/note';
-import { packedUserListSchema } from '@/models/repositories/user-list';
-import { packedAppSchema } from '@/models/repositories/app';
-import { packedMessagingMessageSchema } from '@/models/repositories/messaging-message';
-import { packedNotificationSchema } from '@/models/repositories/notification';
-import { packedDriveFileSchema } from '@/models/repositories/drive-file';
-import { packedDriveFolderSchema } from '@/models/repositories/drive-folder';
-import { packedFollowingSchema } from '@/models/repositories/following';
-import { packedMutingSchema } from '@/models/repositories/muting';
-import { packedBlockingSchema } from '@/models/repositories/blocking';
-import { packedNoteReactionSchema } from '@/models/repositories/note-reaction';
-import { packedHashtagSchema } from '@/models/repositories/hashtag';
-import { packedPageSchema } from '@/models/repositories/page';
-import { packedUserGroupSchema } from '@/models/repositories/user-group';
-import { packedNoteFavoriteSchema } from '@/models/repositories/note-favorite';
-import { packedChannelSchema } from '@/models/repositories/channel';
-import { packedAntennaSchema } from '@/models/repositories/antenna';
-import { packedClipSchema } from '@/models/repositories/clip';
-import { packedFederationInstanceSchema } from '@/models/repositories/federation-instance';
-import { packedQueueCountSchema } from '@/models/repositories/queue';
-import { packedGalleryPostSchema } from '@/models/repositories/gallery-post';
-import { packedEmojiSchema } from '@/models/repositories/emoji';
-import { packedReversiGameSchema } from '@/models/repositories/games/reversi/game';
-import { packedReversiMatchingSchema } from '@/models/repositories/games/reversi/matching';
+import {
+	packedUserLiteSchema,
+	packedUserDetailedNotMeOnlySchema,
+	packedMeDetailedOnlySchema,
+	packedUserDetailedNotMeSchema,
+	packedMeDetailedSchema,
+	packedUserDetailedSchema,
+	packedUserSchema,
+} from '@/models/schema/user.js';
+import { packedNoteSchema } from '@/models/schema/note.js';
+import { packedUserListSchema } from '@/models/schema/user-list.js';
+import { packedAppSchema } from '@/models/schema/app.js';
+import { packedMessagingMessageSchema } from '@/models/schema/messaging-message.js';
+import { packedNotificationSchema } from '@/models/schema/notification.js';
+import { packedDriveFileSchema } from '@/models/schema/drive-file.js';
+import { packedDriveFolderSchema } from '@/models/schema/drive-folder.js';
+import { packedFollowingSchema } from '@/models/schema/following.js';
+import { packedMutingSchema } from '@/models/schema/muting.js';
+import { packedBlockingSchema } from '@/models/schema/blocking.js';
+import { packedNoteReactionSchema } from '@/models/schema/note-reaction.js';
+import { packedHashtagSchema } from '@/models/schema/hashtag.js';
+import { packedPageSchema } from '@/models/schema/page.js';
+import { packedUserGroupSchema } from '@/models/schema/user-group.js';
+import { packedNoteFavoriteSchema } from '@/models/schema/note-favorite.js';
+import { packedChannelSchema } from '@/models/schema/channel.js';
+import { packedAntennaSchema } from '@/models/schema/antenna.js';
+import { packedClipSchema } from '@/models/schema/clip.js';
+import { packedFederationInstanceSchema } from '@/models/schema/federation-instance.js';
+import { packedQueueCountSchema } from '@/models/schema/queue.js';
+import { packedGalleryPostSchema } from '@/models/schema/gallery-post.js';
+import { packedEmojiSchema } from '@/models/schema/emoji.js';
 
 export const refs = {
+	UserLite: packedUserLiteSchema,
+	UserDetailedNotMeOnly: packedUserDetailedNotMeOnlySchema,
+	MeDetailedOnly: packedMeDetailedOnlySchema,
+	UserDetailedNotMe: packedUserDetailedNotMeSchema,
+	MeDetailed: packedMeDetailedSchema,
+	UserDetailed: packedUserDetailedSchema,
 	User: packedUserSchema,
+
 	UserList: packedUserListSchema,
 	UserGroup: packedUserGroupSchema,
 	App: packedAppSchema,
@@ -49,40 +61,59 @@ export const refs = {
 	FederationInstance: packedFederationInstanceSchema,
 	GalleryPost: packedGalleryPostSchema,
 	Emoji: packedEmojiSchema,
-	ReversiGame: packedReversiGameSchema,
-	ReversiMatching: packedReversiMatchingSchema,
 };
 
-export type Packed<x extends keyof typeof refs> = ObjType<(typeof refs[x])['properties']>;
+export type Packed<x extends keyof typeof refs> = SchemaType<typeof refs[x]>;
 
-export interface Schema extends SimpleSchema {
-	items?: Schema;
-	properties?: Obj;
-	ref?: keyof typeof refs;
+type TypeStringef = 'null' | 'boolean' | 'integer' | 'number' | 'string' | 'array' | 'object' | 'any';
+type StringDefToType<T extends TypeStringef> =
+	T extends 'null' ? null :
+	T extends 'boolean' ? boolean :
+	T extends 'integer' ? number :
+	T extends 'number' ? number :
+	T extends 'string' ? string | Date :
+	T extends 'array' ? ReadonlyArray<any> :
+	T extends 'object' ? Record<string, any> :
+	any;
+
+// https://swagger.io/specification/?sbsearch=optional#schema-object
+type OfSchema = {
+	readonly anyOf?: ReadonlyArray<Schema>;
+	readonly oneOf?: ReadonlyArray<Schema>;
+	readonly allOf?: ReadonlyArray<Schema>;
 }
 
-type NonUndefinedPropertyNames<T extends Obj> = {
-	[K in keyof T]: T[K]['optional'] extends true ? never : K
-}[keyof T];
+export interface Schema extends OfSchema {
+	readonly type?: TypeStringef;
+	readonly nullable?: boolean;
+	readonly optional?: boolean;
+	readonly items?: Schema;
+	readonly properties?: Obj;
+	readonly required?: ReadonlyArray<keyof NonNullable<this['properties']>>;
+	readonly description?: string;
+	readonly example?: any;
+	readonly format?: string;
+	readonly ref?: keyof typeof refs;
+	readonly enum?: ReadonlyArray<string>;
+	readonly default?: (this['type'] extends TypeStringef ? StringDefToType<this['type']> : any) | null;
+	readonly maxLength?: number;
+	readonly minLength?: number;
+}
 
-type UndefinedPropertyNames<T extends Obj> = {
-	[K in keyof T]: T[K]['optional'] extends true ? K : never
-}[keyof T];
+type RequiredPropertyNames<s extends Obj> = {
+	[K in keyof s]:
+		// K is not optional
+		s[K]['optional'] extends false ? K :
+		// K has default value
+		s[K]['default'] extends null | string | number | boolean | Record<string, unknown> ? K : never
+}[keyof s];
 
-type OnlyRequired<T extends Obj> = Pick<T, NonUndefinedPropertyNames<T>>;
-type OnlyOptional<T extends Obj> = Pick<T, UndefinedPropertyNames<T>>;
+export interface Obj { [key: string]: Schema; }
 
-export interface Obj extends SimpleObj { [key: string]: Schema; }
-
-export type ObjType<s extends Obj> =
-	{ [P in keyof OnlyOptional<s>]?: SchemaType<s[P]> } &
-	{ [P in keyof OnlyRequired<s>]: SchemaType<s[P]> };
-
-// https://qiita.com/hrsh7th@github/items/84e8968c3601009cdcf2
-type MyType<T extends Schema> = {
-	0: any;
-	1: SchemaType<T>;
-}[T extends Schema ? 1 : 0];
+export type ObjType<s extends Obj, RequiredProps extends keyof s> =
+	{ -readonly [P in keyof s]?: SchemaType<s[P]> } &
+	{ -readonly [P in RequiredProps]: SchemaType<s[P]> } &
+	{ -readonly [P in RequiredPropertyNames<s>]: SchemaType<s[P]> };
 
 type NullOrUndefined<p extends Schema, T> =
 	p['nullable'] extends true
@@ -93,15 +124,44 @@ type NullOrUndefined<p extends Schema, T> =
 			? (T | undefined)
 			: T;
 
-export type SchemaType<p extends Schema> =
-	p['type'] extends 'number' ? NullOrUndefined<p, number> :
-	p['type'] extends 'string' ? NullOrUndefined<p, string> :
-	p['type'] extends 'boolean' ? NullOrUndefined<p, boolean> :
-	p['type'] extends 'array' ? NullOrUndefined<p, MyType<NonNullable<p['items']>>[]> :
-	p['type'] extends 'object' ? (
-		p['ref'] extends keyof typeof refs
-			? NullOrUndefined<p, Packed<p['ref']>>
-			: NullOrUndefined<p, ObjType<NonNullable<p['properties']>>>
+// https://stackoverflow.com/questions/54938141/typescript-convert-union-to-intersection
+// Get intersection from union 
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never;
+
+// https://github.com/misskey-dev/misskey/pull/8144#discussion_r785287552
+// To get union, we use `Foo extends any ? Hoge<Foo> : never`
+type UnionSchemaType<a extends readonly any[], X extends Schema = a[number]> = X extends any ? SchemaType<X> : never;
+type ArrayUnion<T> = T extends any ? Array<T> : never; 
+
+export type SchemaTypeDef<p extends Schema> =
+	p['type'] extends 'null' ? null :
+	p['type'] extends 'integer' ? number :
+	p['type'] extends 'number' ? number :
+	p['type'] extends 'string' ? (
+		p['enum'] extends readonly string[] ?
+			p['enum'][number] :
+			p['format'] extends 'date-time' ? string : // Dateにする？？
+			string
 	) :
-	p['type'] extends 'any' ? NullOrUndefined<p, any> :
+	p['type'] extends 'boolean' ? boolean :
+	p['type'] extends 'object' ? (
+		p['ref'] extends keyof typeof refs ? Packed<p['ref']> :
+		p['properties'] extends NonNullable<Obj> ? ObjType<p['properties'], NonNullable<p['required']>[number]> :
+		p['anyOf'] extends ReadonlyArray<Schema> ? UnionSchemaType<p['anyOf']> & Partial<UnionToIntersection<UnionSchemaType<p['anyOf']>>> :
+		p['allOf'] extends ReadonlyArray<Schema> ? UnionToIntersection<UnionSchemaType<p['allOf']>> :
+		any
+	) :
+	p['type'] extends 'array' ? (
+		p['items'] extends OfSchema ? (
+			p['items']['anyOf'] extends ReadonlyArray<Schema> ? UnionSchemaType<NonNullable<p['items']['anyOf']>>[] :
+			p['items']['oneOf'] extends ReadonlyArray<Schema> ? ArrayUnion<UnionSchemaType<NonNullable<p['items']['oneOf']>>> :
+			p['items']['allOf'] extends ReadonlyArray<Schema> ? UnionToIntersection<UnionSchemaType<NonNullable<p['items']['allOf']>>>[] :
+			never
+		) :
+		p['items'] extends NonNullable<Schema> ? SchemaTypeDef<p['items']>[] :
+		any[]
+	) :
+	p['oneOf'] extends ReadonlyArray<Schema> ? UnionSchemaType<p['oneOf']> :
 	any;
+
+export type SchemaType<p extends Schema> = NullOrUndefined<p, SchemaTypeDef<p>>;

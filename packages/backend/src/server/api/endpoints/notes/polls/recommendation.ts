@@ -1,37 +1,34 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { Polls, Mutings, Notes, PollVotes } from '@/models/index';
+import define from '../../../define.js';
+import { Polls, Mutings, Notes, PollVotes } from '@/models/index.js';
 import { Brackets, In } from 'typeorm';
 
 export const meta = {
 	tags: ['notes'],
 
-	requireCredential: true as const,
-
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		offset: {
-			validator: $.optional.num.min(0),
-			default: 0,
-		},
-	},
+	requireCredential: true,
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			ref: 'Note',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		offset: { type: 'integer', default: 0 },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const query = Polls.createQueryBuilder('poll')
 		.where('poll.userHost IS NULL')
 		.andWhere(`poll.userId != :meId`, { meId: user.id })
@@ -63,7 +60,7 @@ export default define(meta, async (ps, user) => {
 	query.setParameters(mutingQuery.getParameters());
 	//#endregion
 
-	const polls = await query.take(ps.limit!).skip(ps.offset).getMany();
+	const polls = await query.take(ps.limit).skip(ps.offset).getMany();
 
 	if (polls.length === 0) return [];
 

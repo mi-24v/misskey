@@ -1,51 +1,43 @@
-import $ from 'cafy';
-import define from '../../define';
-import { AccessTokens } from '@/models/index';
-import { genId } from '@/misc/gen-id';
-import { secureRndstr } from '@/misc/secure-rndstr';
+import define from '../../define.js';
+import { AccessTokens } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
+import { secureRndstr } from '@/misc/secure-rndstr.js';
 
 export const meta = {
 	tags: ['auth'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	secure: true,
 
-	params: {
-		session: {
-			validator: $.nullable.str,
-		},
-
-		name: {
-			validator: $.nullable.optional.str,
-		},
-
-		description: {
-			validator: $.nullable.optional.str,
-		},
-
-		iconUrl: {
-			validator: $.nullable.optional.str,
-		},
-
-		permission: {
-			validator: $.arr($.str).unique(),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			token: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		session: { type: 'string', nullable: true },
+		name: { type: 'string', nullable: true },
+		description: { type: 'string', nullable: true },
+		iconUrl: { type: 'string', nullable: true },
+		permission: { type: 'array', uniqueItems: true, items: {
+			type: 'string',
+		} },
+	},
+	required: ['session', 'permission'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Generate access token
 	const accessToken = secureRndstr(32, true);
 

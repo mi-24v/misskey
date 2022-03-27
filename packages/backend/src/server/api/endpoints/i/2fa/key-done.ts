@@ -1,47 +1,40 @@
-import $ from 'cafy';
-import * as bcrypt from 'bcryptjs';
-import { promisify } from 'util';
+import bcrypt from 'bcryptjs';
+import { promisify } from 'node:util';
 import * as cbor from 'cbor';
-import define from '../../../define';
+import define from '../../../define.js';
 import {
 	UserProfiles,
 	UserSecurityKeys,
 	AttestationChallenges,
 	Users,
-} from '@/models/index';
-import config from '@/config/index';
-import { procedures, hash } from '../../../2fa';
-import { publishMainStream } from '@/services/stream';
+} from '@/models/index.js';
+import config from '@/config/index.js';
+import { procedures, hash } from '../../../2fa.js';
+import { publishMainStream } from '@/services/stream.js';
 
 const cborDecodeFirst = promisify(cbor.decodeFirst) as any;
-
-export const meta = {
-	requireCredential: true as const,
-
-	secure: true,
-
-	params: {
-		clientDataJSON: {
-			validator: $.str,
-		},
-		attestationObject: {
-			validator: $.str,
-		},
-		password: {
-			validator: $.str,
-		},
-		challengeId: {
-			validator: $.str,
-		},
-		name: {
-			validator: $.str,
-		},
-	},
-};
-
 const rpIdHashReal = hash(Buffer.from(config.hostname, 'utf-8'));
 
-export default define(meta, async (ps, user) => {
+export const meta = {
+	requireCredential: true,
+
+	secure: true,
+} as const;
+
+export const paramDef = {
+	type: 'object',
+	properties: {
+		clientDataJSON: { type: 'string' },
+		attestationObject: { type: 'string' },
+		password: { type: 'string' },
+		challengeId: { type: 'string' },
+		name: { type: 'string' },
+	},
+	required: ['clientDataJSON', 'attestationObject', 'password', 'challengeId', 'name'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const profile = await UserProfiles.findOneOrFail(user.id);
 
 	// Compare password
@@ -129,7 +122,7 @@ export default define(meta, async (ps, user) => {
 
 	const credentialIdString = credentialId.toString('hex');
 
-	await UserSecurityKeys.save({
+	await UserSecurityKeys.insert({
 		userId: user.id,
 		id: credentialIdString,
 		lastUsed: new Date(),

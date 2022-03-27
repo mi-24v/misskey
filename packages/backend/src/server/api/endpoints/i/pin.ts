@@ -1,22 +1,14 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import { addPinned } from '@/services/i/pin';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { Users } from '@/models/index';
+import { addPinned } from '@/services/i/pin.js';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { Users } from '@/models/index.js';
 
 export const meta = {
 	tags: ['account', 'notes'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:account',
-
-	params: {
-		noteId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchNote: {
@@ -39,13 +31,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
-		ref: 'User',
+		type: 'object',
+		optional: false, nullable: false,
+		ref: 'MeDetailed',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		noteId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['noteId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	await addPinned(user, ps.noteId).catch(e => {
 		if (e.id === '70c4e51f-5bea-449c-a030-53bee3cce202') throw new ApiError(meta.errors.noSuchNote);
 		if (e.id === '15a018eb-58e5-4da1-93be-330fcc5e4e1a') throw new ApiError(meta.errors.pinLimitExceeded);
@@ -53,7 +54,7 @@ export default define(meta, async (ps, user) => {
 		throw e;
 	});
 
-	return await Users.pack(user.id, user, {
+	return await Users.pack<true, true>(user.id, user, {
 		detail: true,
 	});
 });

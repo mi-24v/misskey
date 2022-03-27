@@ -1,6 +1,6 @@
 import { PrimaryColumn, Entity, Index, JoinColumn, Column, ManyToOne } from 'typeorm';
-import { User } from './user';
-import { id } from '../id';
+import { User } from './user.js';
+import { id } from '../id.js';
 
 @Entity()
 export class AbuseUserReport {
@@ -50,6 +50,11 @@ export class AbuseUserReport {
 		default: false,
 	})
 	public resolved: boolean;
+
+	@Column('boolean', {
+		default: false
+	})
+	public forwarded: boolean;
 
 	@Column('varchar', {
 		length: 2048,

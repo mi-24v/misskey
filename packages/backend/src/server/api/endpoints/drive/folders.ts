@@ -1,48 +1,38 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { DriveFolders } from '@/models/index';
-import { makePaginationQuery } from '../../common/make-pagination-query';
+import define from '../../define.js';
+import { DriveFolders } from '@/models/index.js';
+import { makePaginationQuery } from '../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['drive'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'read:drive',
 
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-
-		folderId: {
-			validator: $.optional.nullable.type(ID),
-			default: null,
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			ref: 'DriveFolder',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+		folderId: { type: 'string', format: 'misskey:id', nullable: true, default: null },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const query = makePaginationQuery(DriveFolders.createQueryBuilder('folder'), ps.sinceId, ps.untilId)
 		.andWhere('folder.userId = :userId', { userId: user.id });
 
@@ -52,7 +42,7 @@ export default define(meta, async (ps, user) => {
 		query.andWhere('folder.parentId IS NULL');
 	}
 
-	const folders = await query.take(ps.limit!).getMany();
+	const folders = await query.take(ps.limit).getMany();
 
 	return await Promise.all(folders.map(folder => DriveFolders.pack(folder)));
 });

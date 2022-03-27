@@ -1,28 +1,15 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import { publishDriveStream } from '@/services/stream';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { DriveFolders } from '@/models/index';
-import { genId } from '@/misc/gen-id';
+import { publishDriveStream } from '@/services/stream.js';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { DriveFolders } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
 
 export const meta = {
 	tags: ['drive'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:drive',
-
-	params: {
-		name: {
-			validator: $.optional.str.pipe(DriveFolders.validateFolderName),
-			default: 'Untitled',
-		},
-
-		parentId: {
-			validator: $.optional.nullable.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchFolder: {
@@ -37,9 +24,19 @@ export const meta = {
 		optional: false as const, nullable: false as const,
 		ref: 'DriveFolder',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		name: { type: 'string', default: "Untitled", maxLength: 200 },
+		parentId: { type: 'string', format: 'misskey:id', nullable: true },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// If the parent folder is specified
 	let parent = null;
 	if (ps.parentId) {

@@ -1,33 +1,13 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { ID } from '@/misc/cafy-id';
-import { Emojis } from '@/models/index';
+import define from '../../../define.js';
+import { Emojis } from '@/models/index.js';
 import { getConnection } from 'typeorm';
-import { ApiError } from '../../../error';
+import { ApiError } from '../../../error.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
-
-	params: {
-		id: {
-			validator: $.type(ID),
-		},
-
-		name: {
-			validator: $.str,
-		},
-
-		category: {
-			validator: $.optional.nullable.str,
-		},
-
-		aliases: {
-			validator: $.arr($.str),
-		},
-	},
 
 	errors: {
 		noSuchEmoji: {
@@ -36,9 +16,23 @@ export const meta = {
 			id: '684dec9d-a8c2-4364-9aa8-456c49cb1dc8',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		id: { type: 'string', format: 'misskey:id' },
+		name: { type: 'string' },
+		category: { type: 'string', nullable: true },
+		aliases: { type: 'array', items: {
+			type: 'string',
+		} },
+	},
+	required: ['id', 'name', 'aliases'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const emoji = await Emojis.findOne(ps.id);
 
 	if (emoji == null) throw new ApiError(meta.errors.noSuchEmoji);

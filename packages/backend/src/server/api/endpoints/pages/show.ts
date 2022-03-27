@@ -1,32 +1,16 @@
-import $ from 'cafy';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { Pages, Users } from '@/models/index';
-import { ID } from '@/misc/cafy-id';
-import { Page } from '@/models/entities/page';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { Pages, Users } from '@/models/index.js';
+import { Page } from '@/models/entities/page.js';
 
 export const meta = {
 	tags: ['pages'],
 
-	requireCredential: false as const,
-
-	params: {
-		pageId: {
-			validator: $.optional.type(ID),
-		},
-
-		name: {
-			validator: $.optional.str,
-		},
-
-		username: {
-			validator: $.optional.str,
-		},
-	},
+	requireCredential: false,
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'Page',
 	},
 
@@ -37,9 +21,20 @@ export const meta = {
 			id: '222120c0-3ead-4528-811b-b96f233388d7',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		pageId: { type: 'string', format: 'misskey:id' },
+		name: { type: 'string' },
+		username: { type: 'string' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	let page: Page | undefined;
 
 	if (ps.pageId) {

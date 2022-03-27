@@ -1,15 +1,11 @@
 import { EntityRepository, Repository } from 'typeorm';
-import { MessagingMessage } from '@/models/entities/messaging-message';
-import { Users, DriveFiles, UserGroups } from '../index';
-import { Packed } from '@/misc/schema';
-import { User } from '@/models/entities/user';
+import { MessagingMessage } from '@/models/entities/messaging-message.js';
+import { Users, DriveFiles, UserGroups } from '../index.js';
+import { Packed } from '@/misc/schema.js';
+import { User } from '@/models/entities/user.js';
 
 @EntityRepository(MessagingMessage)
 export class MessagingMessageRepository extends Repository<MessagingMessage> {
-	public validateText(text: string): boolean {
-		return text.trim().length <= 1000 && text.trim() != '';
-	}
-
 	public async pack(
 		src: MessagingMessage['id'] | MessagingMessage,
 		me?: { id: User['id'] } | null | undefined,
@@ -42,78 +38,3 @@ export class MessagingMessageRepository extends Repository<MessagingMessage> {
 		};
 	}
 }
-
-export const packedMessagingMessageSchema = {
-	type: 'object' as const,
-	optional: false as const, nullable: false as const,
-	properties: {
-		id: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-			example: 'xxxxxxxxxx',
-		},
-		createdAt: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'date-time',
-		},
-		userId: {
-			type: 'string' as const,
-			optional: false as const, nullable: false as const,
-			format: 'id',
-		},
-		user: {
-			type: 'object' as const,
-			ref: 'User' as const,
-			optional: true as const, nullable: false as const,
-		},
-		text: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-		},
-		fileId: {
-			type: 'string' as const,
-			optional: true as const, nullable: true as const,
-			format: 'id',
-		},
-		file: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-			ref: 'DriveFile' as const,
-		},
-		recipientId: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'id',
-		},
-		recipient: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-			ref: 'User' as const,
-		},
-		groupId: {
-			type: 'string' as const,
-			optional: false as const, nullable: true as const,
-			format: 'id',
-		},
-		group: {
-			type: 'object' as const,
-			optional: true as const, nullable: true as const,
-			ref: 'UserGroup' as const,
-		},
-		isRead: {
-			type: 'boolean' as const,
-			optional: true as const, nullable: false as const,
-		},
-		reads: {
-			type: 'array' as const,
-			optional: true as const, nullable: false as const,
-			items: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
-				format: 'id',
-			},
-		},
-	},
-};

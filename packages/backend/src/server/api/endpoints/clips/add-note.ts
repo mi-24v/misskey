@@ -1,27 +1,15 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { ClipNotes, Clips } from '@/models/index';
-import { ApiError } from '../../error';
-import { genId } from '@/misc/gen-id';
-import { getNote } from '../../common/getters';
+import define from '../../define.js';
+import { ClipNotes, Clips } from '@/models/index.js';
+import { ApiError } from '../../error.js';
+import { genId } from '@/misc/gen-id.js';
+import { getNote } from '../../common/getters.js';
 
 export const meta = {
 	tags: ['account', 'notes', 'clips'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:account',
-
-	params: {
-		clipId: {
-			validator: $.type(ID),
-		},
-
-		noteId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchClip: {
@@ -42,9 +30,19 @@ export const meta = {
 			id: '734806c4-542c-463a-9311-15c512803965',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		clipId: { type: 'string', format: 'misskey:id' },
+		noteId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['clipId', 'noteId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const clip = await Clips.findOne({
 		id: ps.clipId,
 		userId: user.id,

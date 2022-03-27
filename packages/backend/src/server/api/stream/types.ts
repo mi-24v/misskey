@@ -1,21 +1,20 @@
 import { EventEmitter } from 'events';
 import Emitter from 'strict-event-emitter-types';
-import { Channel } from '@/models/entities/channel';
-import { User } from '@/models/entities/user';
-import { UserProfile } from '@/models/entities/user-profile';
-import { Note } from '@/models/entities/note';
-import { Antenna } from '@/models/entities/antenna';
-import { DriveFile } from '@/models/entities/drive-file';
-import { DriveFolder } from '@/models/entities/drive-folder';
-import { Emoji } from '@/models/entities/emoji';
-import { UserList } from '@/models/entities/user-list';
-import { MessagingMessage } from '@/models/entities/messaging-message';
-import { UserGroup } from '@/models/entities/user-group';
-import { ReversiGame } from '@/models/entities/games/reversi/game';
-import { AbuseUserReport } from '@/models/entities/abuse-user-report';
-import { Signin } from '@/models/entities/signin';
-import { Page } from '@/models/entities/page';
-import { Packed } from '@/misc/schema';
+import { Channel } from '@/models/entities/channel.js';
+import { User } from '@/models/entities/user.js';
+import { UserProfile } from '@/models/entities/user-profile.js';
+import { Note } from '@/models/entities/note.js';
+import { Antenna } from '@/models/entities/antenna.js';
+import { DriveFile } from '@/models/entities/drive-file.js';
+import { DriveFolder } from '@/models/entities/drive-folder.js';
+import { Emoji } from '@/models/entities/emoji.js';
+import { UserList } from '@/models/entities/user-list.js';
+import { MessagingMessage } from '@/models/entities/messaging-message.js';
+import { UserGroup } from '@/models/entities/user-group.js';
+import { AbuseUserReport } from '@/models/entities/abuse-user-report.js';
+import { Signin } from '@/models/entities/signin.js';
+import { Page } from '@/models/entities/page.js';
+import { Packed } from '@/misc/schema.js';
 
 //#region Stream type-body definitions
 export interface InternalStreamTypes {
@@ -37,7 +36,7 @@ export interface UserStreamTypes {
 	updateUserProfile: UserProfile;
 	mute: User;
 	unmute: User;
-	follow: Packed<'User'>;
+	follow: Packed<'UserDetailedNotMe'>;
 	unfollow: Packed<'User'>;
 	userAdded: Packed<'User'>;
 }
@@ -47,7 +46,7 @@ export interface MainStreamTypes {
 	mention: Packed<'Note'>;
 	reply: Packed<'Note'>;
 	renote: Packed<'Note'>;
-	follow: Packed<'User'>;
+	follow: Packed<'UserDetailedNotMe'>;
 	followed: Packed<'User'>;
 	unfollow: Packed<'User'>;
 	meUpdated: Packed<'User'>;
@@ -77,8 +76,6 @@ export interface MainStreamTypes {
 	readAllChannels: undefined;
 	unreadChannel: Note['id'];
 	myTokenRegenerated: undefined;
-	reversiNoInvites: undefined;
-	reversiInvited: Packed<'ReversiMatching'>;
 	signin: Signin;
 	registryUpdated: {
 		scope?: string[];
@@ -87,6 +84,7 @@ export interface MainStreamTypes {
 	};
 	driveFileCreated: Packed<'DriveFile'>;
 	readAntenna: Antenna;
+	receiveFollowRequest: Packed<'User'>;
 }
 
 export interface DriveStreamTypes {
@@ -108,7 +106,10 @@ export interface NoteStreamTypes {
 	};
 	reacted: {
 		reaction: string;
-		emoji?: Emoji;
+		emoji?: {
+			name: string;
+			url: string;
+		} | null;
 		userId: User['id'];
 	};
 	unreacted: {
@@ -156,47 +157,6 @@ export interface GroupMessagingStreamTypes {
 export interface MessagingIndexStreamTypes {
 	read: MessagingMessage['id'][];
 	message: Packed<'MessagingMessage'>;
-}
-
-export interface ReversiStreamTypes {
-	matched: Packed<'ReversiGame'>;
-	invited: Packed<'ReversiMatching'>;
-}
-
-export interface ReversiGameStreamTypes {
-	started: Packed<'ReversiGame'>;
-	ended: {
-		winnerId?: User['id'] | null,
-		game: Packed<'ReversiGame'>;
-	};
-	updateSettings: {
-		key: string;
-		value: FIXME;
-	};
-	initForm: {
-		userId: User['id'];
-		form: FIXME;
-	};
-	updateForm: {
-		userId: User['id'];
-		id: string;
-		value: FIXME;
-	};
-	message: {
-		userId: User['id'];
-		message: FIXME;
-	};
-	changeAccepts: {
-		user1: boolean;
-		user2: boolean;
-	};
-	set: {
-		at: Date;
-		color: boolean;
-		pos: number;
-		next: boolean;
-	};
-	watching: User['id'];
 }
 
 export interface AdminStreamTypes {
@@ -267,14 +227,6 @@ export type StreamMessages = {
 	messagingIndex: {
 		name: `messagingIndexStream:${User['id']}`;
 		payload: EventUnionFromDictionary<MessagingIndexStreamTypes>;
-	};
-	reversi: {
-		name: `reversiStream:${User['id']}`;
-		payload: EventUnionFromDictionary<ReversiStreamTypes>;
-	};
-	reversiGame: {
-		name: `reversiGameStream:${ReversiGame['id']}`;
-		payload: EventUnionFromDictionary<ReversiGameStreamTypes>;
 	};
 	admin: {
 		name: `adminStream:${User['id']}`;

@@ -1,20 +1,12 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { ID } from '@/misc/cafy-id';
-import { Ads } from '@/models/index';
-import { ApiError } from '../../../error';
+import define from '../../../define.js';
+import { Ads } from '@/models/index.js';
+import { ApiError } from '../../../error.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
-
-	params: {
-		id: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchAd: {
@@ -23,9 +15,18 @@ export const meta = {
 			id: 'ccac9863-3a03-416e-b899-8a64041118b1',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		id: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['id'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	const ad = await Ads.findOne(ps.id);
 
 	if (ad == null) throw new ApiError(meta.errors.noSuchAd);

@@ -1,29 +1,17 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { getUser } from '../../../common/getters';
-import { UserGroups, UserGroupJoinings, UserGroupInvitations } from '@/models/index';
-import { genId } from '@/misc/gen-id';
-import { UserGroupInvitation } from '@/models/entities/user-group-invitation';
-import { createNotification } from '@/services/create-notification';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { getUser } from '../../../common/getters.js';
+import { UserGroups, UserGroupJoinings, UserGroupInvitations } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
+import { UserGroupInvitation } from '@/models/entities/user-group-invitation.js';
+import { createNotification } from '@/services/create-notification.js';
 
 export const meta = {
 	tags: ['groups', 'users'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:user-groups',
-
-	params: {
-		groupId: {
-			validator: $.type(ID),
-		},
-
-		userId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchGroup: {
@@ -50,9 +38,19 @@ export const meta = {
 			id: 'ee0f58b4-b529-4d13-b761-b9a3e69f97e6',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		groupId: { type: 'string', format: 'misskey:id' },
+		userId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['groupId', 'userId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	// Fetch the group
 	const userGroup = await UserGroups.findOne({
 		id: ps.groupId,

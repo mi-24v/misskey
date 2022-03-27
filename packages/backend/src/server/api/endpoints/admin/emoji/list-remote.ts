@@ -1,83 +1,69 @@
-import $ from 'cafy';
-import define from '../../../define';
-import { Emojis } from '@/models/index';
-import { toPuny } from '@/misc/convert-host';
-import { makePaginationQuery } from '../../../common/make-pagination-query';
-import { ID } from '@/misc/cafy-id';
+import define from '../../../define.js';
+import { Emojis } from '@/models/index.js';
+import { toPuny } from '@/misc/convert-host.js';
+import { makePaginationQuery } from '../../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-		query: {
-			validator: $.optional.nullable.str,
-			default: null,
-		},
-
-		host: {
-			validator: $.optional.nullable.str,
-			default: null,
-		},
-
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				id: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'id',
 				},
 				aliases: {
-					type: 'array' as const,
-					optional: false as const, nullable: false as const,
+					type: 'array',
+					optional: false, nullable: false,
 					items: {
-						type: 'string' as const,
-						optional: false as const, nullable: false as const,
+						type: 'string',
+						optional: false, nullable: false,
 					},
 				},
 				name: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 				category: {
-					type: 'string' as const,
-					optional: false as const, nullable: true as const,
+					type: 'string',
+					optional: false, nullable: true,
 				},
 				host: {
-					type: 'string' as const,
-					optional: false as const, nullable: true as const,
+					type: 'string',
+					optional: false, nullable: true,
 				},
 				url: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		query: { type: 'string', nullable: true, default: null },
+		host: { type: 'string', nullable: true, default: null },
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const q = makePaginationQuery(Emojis.createQueryBuilder('emoji'), ps.sinceId, ps.untilId);
 
 	if (ps.host == null) {
@@ -92,7 +78,7 @@ export default define(meta, async (ps) => {
 
 	const emojis = await q
 		.orderBy('emoji.id', 'DESC')
-		.take(ps.limit!)
+		.take(ps.limit)
 		.getMany();
 
 	return Emojis.packMany(emojis);

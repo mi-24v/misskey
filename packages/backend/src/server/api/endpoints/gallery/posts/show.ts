@@ -1,19 +1,11 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { GalleryPosts } from '@/models/index';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { GalleryPosts } from '@/models/index.js';
 
 export const meta = {
 	tags: ['gallery'],
 
-	requireCredential: false as const,
-
-	params: {
-		postId: {
-			validator: $.type(ID),
-		},
-	},
+	requireCredential: false,
 
 	errors: {
 		noSuchPost: {
@@ -24,13 +16,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'GalleryPost',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		postId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['postId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	const post = await GalleryPosts.findOne({
 		id: ps.postId,
 	});

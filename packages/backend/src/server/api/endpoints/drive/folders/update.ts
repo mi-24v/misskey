@@ -1,30 +1,14 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import { publishDriveStream } from '@/services/stream';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { DriveFolders } from '@/models/index';
+import { publishDriveStream } from '@/services/stream.js';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { DriveFolders } from '@/models/index.js';
 
 export const meta = {
 	tags: ['drive'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:drive',
-
-	params: {
-		folderId: {
-			validator: $.type(ID),
-		},
-
-		name: {
-			validator: $.optional.str.pipe(DriveFolders.validateFolderName),
-		},
-
-		parentId: {
-			validator: $.optional.nullable.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchFolder: {
@@ -47,13 +31,24 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'DriveFolder',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		folderId: { type: 'string', format: 'misskey:id' },
+		name: { type: 'string', maxLength: 200 },
+		parentId: { type: 'string', format: 'misskey:id', nullable: true },
+	},
+	required: ['folderId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Fetch folder
 	const folder = await DriveFolders.findOne({
 		id: ps.folderId,

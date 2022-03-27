@@ -5,7 +5,7 @@
 		<div class="_formBlock uawsfosz">
 			<div class="meter"><div :style="meterStyle"></div></div>
 		</div>
-		<div class="_inputSplit _formBlock">
+		<FormSplit>
 			<MkKeyValue class="_formBlock">
 				<template #key>{{ $ts.capacity }}</template>
 				<template #value>{{ bytes(capacity, 1) }}</template>
@@ -14,12 +14,12 @@
 				<template #key>{{ $ts.inUse }}</template>
 				<template #value>{{ bytes(usage, 1) }}</template>
 			</MkKeyValue>
-		</div>
+		</FormSplit>
 	</FormSection>
 
 	<FormSection>
 		<template #label>{{ $ts.statistics }}</template>
-		<div ref="chart"></div>
+		<MkChart src="per-user-drive" :args="{ user: $i }" span="day" :limit="7 * 5" :bar="true" :stacked="true" :detailed="false" :aspect-ratio="6"/>
 	</FormSection>
 
 	<FormSection>
@@ -28,6 +28,7 @@
 			<template #suffix>{{ uploadFolder ? uploadFolder.name : '-' }}</template>
 			<template #suffixIcon><i class="fas fa-folder-open"></i></template>
 		</FormLink>
+		<FormSwitch v-model="keepOriginalUploading" class="_formBlock">{{ $ts.keepOriginalUploading }}<template #caption>{{ $ts.keepOriginalUploadingDescription }}</template></FormSwitch>
 	</FormSection>
 </div>
 </template>
@@ -36,19 +37,24 @@
 import { defineComponent } from 'vue';
 import * as tinycolor from 'tinycolor2';
 import FormLink from '@/components/form/link.vue';
+import FormSwitch from '@/components/form/switch.vue';
 import FormSection from '@/components/form/section.vue';
 import MkKeyValue from '@/components/key-value.vue';
+import FormSplit from '@/components/form/split.vue';
 import * as os from '@/os';
 import bytes from '@/filters/bytes';
 import * as symbols from '@/symbols';
-
-// TODO: render chart
+import { defaultStore } from '@/store';
+import MkChart from '@/components/chart.vue';
 
 export default defineComponent({
 	components: {
 		FormLink,
+		FormSwitch,
 		FormSection,
 		MkKeyValue,
+		FormSplit,
+		MkChart,
 	},
 
 	emits: ['info'],
@@ -77,7 +83,8 @@ export default defineComponent({
 					l: 0.5
 				})
 			};
-		}
+		},
+		keepOriginalUploading: defaultStore.makeGetterSetter('keepOriginalUploading'),
 	},
 
 	async created() {
@@ -95,10 +102,6 @@ export default defineComponent({
 				folderId: this.$store.state.uploadFolder
 			});
 		}
-	},
-
-	mounted() {
-		this.$emit('info', this[symbols.PAGE_INFO]);
 	},
 
 	methods: {

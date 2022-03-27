@@ -1,23 +1,16 @@
-import $ from 'cafy';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { Hashtags } from '@/models/index';
-import { normalizeForSearch } from '@/misc/normalize-for-search';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { Hashtags } from '@/models/index.js';
+import { normalizeForSearch } from '@/misc/normalize-for-search.js';
 
 export const meta = {
 	tags: ['hashtags'],
 
-	requireCredential: false as const,
-
-	params: {
-		tag: {
-			validator: $.str,
-		},
-	},
+	requireCredential: false,
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'Hashtag',
 	},
 
@@ -28,9 +21,18 @@ export const meta = {
 			id: '110ee688-193e-4a3a-9ecf-c167b2e6981e',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		tag: { type: 'string' },
+	},
+	required: ['tag'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const hashtag = await Hashtags.findOne({ name: normalizeForSearch(ps.tag) });
 	if (hashtag == null) {
 		throw new ApiError(meta.errors.noSuchHashtag);

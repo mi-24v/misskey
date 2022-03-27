@@ -1,82 +1,40 @@
-import $ from 'cafy';
-import define from '../../define';
-import { Apps } from '@/models/index';
+import define from '../../define.js';
+import { Apps } from '@/models/index.js';
 
 export const meta = {
 	tags: ['account', 'app'],
 
-	requireCredential: true as const,
-
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		offset: {
-			validator: $.optional.num.min(0),
-			default: 0,
-		},
-	},
+	requireCredential: true,
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
-			properties: {
-				id: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
-				},
-				name: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
-				},
-				callbackUrl: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
-				},
-				permission: {
-					type: 'array' as const,
-					optional: false as const, nullable: false as const,
-					items: {
-						type: 'string' as const,
-						optional: false as const, nullable: false as const,
-					},
-				},
-				secret: {
-					type: 'string' as const,
-					optional: true as const, nullable: false as const,
-				},
-				isAuthorized: {
-					type: 'object' as const,
-					optional: true as const, nullable: false as const,
-					properties: {
-						appId: {
-							type: 'string' as const,
-							optional: false as const, nullable: false as const,
-						},
-						userId: {
-							type: 'string' as const,
-							optional: false as const, nullable: false as const,
-						},
-					},
-				},
-			},
+			type: 'object',
+			optional: false, nullable: false,
+			ref: 'App',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		offset: { type: 'integer', default: 0 },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const query = {
 		userId: user.id,
 	};
 
 	const apps = await Apps.find({
 		where: query,
-		take: ps.limit!,
+		take: ps.limit,
 		skip: ps.offset,
 	});
 

@@ -1,31 +1,33 @@
-import $ from 'cafy';
-import define from '../../define';
-import { Users, UsedUsernames } from '@/models/index';
+import define from '../../define.js';
+import { Users, UsedUsernames } from '@/models/index.js';
 
 export const meta = {
 	tags: ['users'],
 
-	requireCredential: false as const,
-
-	params: {
-		username: {
-			validator: $.use(Users.validateLocalUsername),
-		},
-	},
+	requireCredential: false,
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			available: {
-				type: 'boolean' as const,
-				optional: false as const, nullable: false as const,
+				type: 'boolean',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		username: Users.localUsernameSchema,
+	},
+	required: ['username'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	// Get exist
 	const exist = await Users.count({
 		host: null,

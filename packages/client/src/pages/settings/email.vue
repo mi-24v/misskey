@@ -41,8 +41,6 @@
 
 <script lang="ts">
 import { defineComponent, onMounted, ref, watch } from 'vue';
-import FormButton from '@/components/debobigego/button.vue';
-import FormLink from '@/components/debobigego/link.vue';
 import FormSection from '@/components/form/section.vue';
 import FormInput from '@/components/form/input.vue';
 import FormSwitch from '@/components/form/switch.vue';
@@ -54,8 +52,6 @@ import { i18n } from '@/i18n';
 export default defineComponent({
 	components: {
 		FormSection,
-		FormLink,
-		FormButton,
 		FormSwitch,
 		FormInput,
 	},
@@ -66,7 +62,7 @@ export default defineComponent({
 		const emailAddress = ref($i.email);
 
 		const INFO = {
-			title: i18n.locale.email,
+			title: i18n.ts.email,
 			icon: 'fas fa-envelope',
 			bg: 'var(--bg)',
 		};
@@ -79,7 +75,7 @@ export default defineComponent({
 
 		const saveEmailAddress = () => {
 			os.inputText({
-				title: i18n.locale.password,
+				title: i18n.ts.password,
 				type: 'password'
 			}).then(({ canceled, result: password }) => {
 				if (canceled) return;
@@ -115,8 +111,6 @@ export default defineComponent({
 		});
 
 		onMounted(() => {
-			context.emit('info', INFO);
-
 			watch(emailAddress, () => {
 				saveEmailAddress();
 			});

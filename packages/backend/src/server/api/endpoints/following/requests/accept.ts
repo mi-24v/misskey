@@ -1,22 +1,14 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import acceptFollowRequest from '@/services/following/requests/accept';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { getUser } from '../../../common/getters';
+import acceptFollowRequest from '@/services/following/requests/accept.js';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { getUser } from '../../../common/getters.js';
 
 export const meta = {
 	tags: ['following', 'account'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:following',
-
-	params: {
-		userId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchUser: {
@@ -30,9 +22,18 @@ export const meta = {
 			id: 'bcde4f8b-0913-4614-8881-614e522fb041',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		userId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['userId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Fetch follower
 	const follower = await getUser(ps.userId).catch(e => {
 		if (e.id === '15348ddd-432d-49c2-8a5a-8069753becff') throw new ApiError(meta.errors.noSuchUser);

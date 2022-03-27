@@ -1,7 +1,7 @@
-import isNativeToken from './common/is-native-token';
-import { User } from '@/models/entities/user';
-import { Users, AccessTokens, Apps } from '@/models/index';
-import { AccessToken } from '@/models/entities/access-token';
+import isNativeToken from './common/is-native-token.js';
+import { User } from '@/models/entities/user.js';
+import { Users, AccessTokens, Apps } from '@/models/index.js';
+import { AccessToken } from '@/models/entities/access-token.js';
 
 export class AuthenticationError extends Error {
 	constructor(message: string) {
@@ -10,7 +10,7 @@ export class AuthenticationError extends Error {
 	}
 }
 
-export default async (token: string): Promise<[User | null | undefined, App | null | undefined]> => {
+export default async (token: string | null): Promise<[User | null | undefined, AccessToken | null | undefined]> => {
 	if (token == null) {
 		return [null, null];
 	}

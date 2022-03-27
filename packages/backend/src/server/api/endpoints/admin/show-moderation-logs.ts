@@ -1,74 +1,68 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { ModerationLogs } from '@/models/index';
-import { makePaginationQuery } from '../../common/make-pagination-query';
+import define from '../../define.js';
+import { ModerationLogs } from '@/models/index.js';
+import { makePaginationQuery } from '../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				id: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'id',
 				},
 				createdAt: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'date-time',
 				},
 				type: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 				},
 				info: {
-					type: 'object' as const,
-					optional: false as const, nullable: false as const,
+					type: 'object',
+					optional: false, nullable: false,
 				},
 				userId: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'id',
 				},
 				user: {
-					type: 'object' as const,
-					optional: false as const, nullable: false as const,
-					ref: 'User',
+					type: 'object',
+					optional: false, nullable: false,
+					ref: 'UserDetailed',
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const query = makePaginationQuery(ModerationLogs.createQueryBuilder('report'), ps.sinceId, ps.untilId);
 
-	const reports = await query.take(ps.limit!).getMany();
+	const reports = await query.take(ps.limit).getMany();
 
 	return await ModerationLogs.packMany(reports);
 });

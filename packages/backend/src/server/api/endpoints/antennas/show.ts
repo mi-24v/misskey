@@ -1,21 +1,13 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { ApiError } from '../../error';
-import { Antennas } from '@/models/index';
+import define from '../../define.js';
+import { ApiError } from '../../error.js';
+import { Antennas } from '@/models/index.js';
 
 export const meta = {
 	tags: ['antennas', 'account'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'read:account',
-
-	params: {
-		antennaId: {
-			validator: $.type(ID),
-		},
-	},
 
 	errors: {
 		noSuchAntenna: {
@@ -26,13 +18,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'Antenna',
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		antennaId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['antennaId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	// Fetch the antenna
 	const antenna = await Antennas.findOne({
 		id: ps.antennaId,

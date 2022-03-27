@@ -1,29 +1,26 @@
-import { deliverQueue } from '@/queue/queues';
-import { URL } from 'url';
-import define from '../../../define';
+import { deliverQueue } from '@/queue/queues.js';
+import { URL } from 'node:url';
+import define from '../../../define.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'array' as const,
-			optional: false as const, nullable: false as const,
+			type: 'array',
+			optional: false, nullable: false,
 			items: {
 				anyOf: [
 					{
-						type: 'string' as const,
+						type: 'string',
 					},
 					{
-						type: 'number' as const,
+						type: 'number',
 					},
 				],
 			},
@@ -33,9 +30,16 @@ export const meta = {
 			12,
 		]],
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const jobs = await deliverQueue.getJobs(['delayed']);
 
 	const res = [] as [string, number][];

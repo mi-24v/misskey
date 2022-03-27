@@ -1,10 +1,10 @@
-import { publishMainStream } from '@/services/stream';
-import pushSw from './push-notification';
-import { Notifications, Mutings, UserProfiles, Users } from '@/models/index';
-import { genId } from '@/misc/gen-id';
-import { User } from '@/models/entities/user';
-import { Notification } from '@/models/entities/notification';
-import { sendEmailNotification } from './send-email-notification';
+import { publishMainStream } from '@/services/stream.js';
+import pushSw from './push-notification.js';
+import { Notifications, Mutings, UserProfiles, Users } from '@/models/index.js';
+import { genId } from '@/misc/gen-id.js';
+import { User } from '@/models/entities/user.js';
+import { Notification } from '@/models/entities/notification.js';
+import { sendEmailNotification } from './send-email-notification.js';
 
 export async function createNotification(
 	notifieeId: User['id'],
@@ -20,7 +20,7 @@ export async function createNotification(
 	const isMuted = profile?.mutingNotificationTypes.includes(type);
 
 	// Create notification
-	const notification = await Notifications.save({
+	const notification = await Notifications.insert({
 		id: genId(),
 		createdAt: new Date(),
 		notifieeId: notifieeId,
@@ -28,7 +28,8 @@ export async function createNotification(
 		// 相手がこの通知をミュートしているようなら、既読を予めつけておく
 		isRead: isMuted,
 		...data,
-	} as Partial<Notification>);
+	} as Partial<Notification>)
+		.then(x => Notifications.findOneOrFail(x.identifiers[0]));
 
 	const packed = await Notifications.pack(notification, {});
 

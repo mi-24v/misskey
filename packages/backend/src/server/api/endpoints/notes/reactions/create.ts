@@ -1,26 +1,14 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import createReaction from '@/services/note/reaction/create';
-import define from '../../../define';
-import { getNote } from '../../../common/getters';
-import { ApiError } from '../../../error';
+import createReaction from '@/services/note/reaction/create.js';
+import define from '../../../define.js';
+import { getNote } from '../../../common/getters.js';
+import { ApiError } from '../../../error.js';
 
 export const meta = {
 	tags: ['reactions', 'notes'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'write:reactions',
-
-	params: {
-		noteId: {
-			validator: $.type(ID),
-		},
-
-		reaction: {
-			validator: $.str,
-		},
-	},
 
 	errors: {
 		noSuchNote: {
@@ -41,9 +29,19 @@ export const meta = {
 			id: '20ef5475-9f38-4e4c-bd33-de6d979498ec',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		noteId: { type: 'string', format: 'misskey:id' },
+		reaction: { type: 'string' },
+	},
+	required: ['noteId', 'reaction'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const note = await getNote(ps.noteId).catch(e => {
 		if (e.id === '9725d0ce-ba28-4dde-95a7-2cbb2c15de24') throw new ApiError(meta.errors.noSuchNote);
 		throw e;

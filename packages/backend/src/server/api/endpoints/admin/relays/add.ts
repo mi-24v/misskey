@@ -1,20 +1,13 @@
-import { URL } from 'url';
-import $ from 'cafy';
-import define from '../../../define';
-import { addRelay } from '@/services/relay';
-import { ApiError } from '../../../error';
+import { URL } from 'node:url';
+import define from '../../../define.js';
+import { addRelay } from '@/services/relay.js';
+import { ApiError } from '../../../error.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
-	requireModerator: true as const,
-
-	params: {
-		inbox: {
-			validator: $.str,
-		},
-	},
+	requireCredential: true,
+	requireModerator: true,
 
 	errors: {
 		invalidUrl: {
@@ -25,22 +18,22 @@ export const meta = {
 	},
 
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			id: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'id',
 			},
 			inbox: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				format: 'url',
 			},
 			status: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				default: 'requesting',
 				enum: [
 					'requesting',
@@ -50,9 +43,18 @@ export const meta = {
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		inbox: { type: 'string' },
+	},
+	required: ['inbox'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	try {
 		if (new URL(ps.inbox).protocol !== 'https:') throw 'https only';
 	} catch {

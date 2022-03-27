@@ -1,12 +1,12 @@
 import { In } from 'typeorm';
-import { Emojis } from '@/models/index';
-import { Emoji } from '@/models/entities/emoji';
-import { Note } from '@/models/entities/note';
-import { Cache } from './cache';
-import { isSelfHost, toPunyNullable } from './convert-host';
-import { decodeReaction } from './reaction-lib';
-import config from '@/config/index';
-import { query } from '@/prelude/url';
+import { Emojis } from '@/models/index.js';
+import { Emoji } from '@/models/entities/emoji.js';
+import { Note } from '@/models/entities/note.js';
+import { Cache } from './cache.js';
+import { isSelfHost, toPunyNullable } from './convert-host.js';
+import { decodeReaction } from './reaction-lib.js';
+import config from '@/config/index.js';
+import { query } from '@/prelude/url.js';
 
 const cache = new Cache<Emoji | null>(1000 * 60 * 60 * 12);
 
@@ -62,7 +62,8 @@ export async function populateEmoji(emojiName: string, noteUserHost: string | nu
 	if (emoji == null) return null;
 
 	const isLocal = emoji.host == null;
-	const url = isLocal ? emoji.url : `${config.url}/proxy/image.png?${query({ url: emoji.url })}`;
+	const emojiUrl = emoji.publicUrl || emoji.originalUrl; // || emoji.originalUrl してるのは後方互換性のため
+	const url = isLocal ? emojiUrl : `${config.url}/proxy/image.png?${query({ url: emojiUrl })}`;
 
 	return {
 		name: emojiName,
@@ -116,7 +117,7 @@ export async function prefetchEmojis(emojis: { name: string; host: string | null
 	}
 	const _emojis = emojisQuery.length > 0 ? await Emojis.find({
 		where: emojisQuery,
-		select: ['name', 'host', 'url'],
+		select: ['name', 'host', 'originalUrl', 'publicUrl'],
 	}) : [];
 	for (const emoji of _emojis) {
 		cache.set(`${emoji.name} ${emoji.host}`, emoji);

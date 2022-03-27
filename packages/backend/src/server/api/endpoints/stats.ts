@@ -1,52 +1,56 @@
-import define from '../define';
-import { NoteReactions, Notes, Users } from '@/models/index';
-import { federationChart, driveChart } from '@/services/chart/index';
+import define from '../define.js';
+import { Instances, NoteReactions, Notes, Users } from '@/models/index.js';
+import { } from '@/services/chart/index.js';
 
 export const meta = {
-	requireCredential: false as const,
+	requireCredential: false,
 
 	tags: ['meta'],
 
-	params: {
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			notesCount: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			originalNotesCount: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			usersCount: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			originalUsersCount: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			instances: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			driveUsageLocal: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 			driveUsageRemote: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async () => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const [
 		notesCount,
 		originalNotesCount,
@@ -55,8 +59,6 @@ export default define(meta, async () => {
 		reactionsCount,
 		//originalReactionsCount,
 		instances,
-		driveUsageLocal,
-		driveUsageRemote,
 	] = await Promise.all([
 		Notes.count({ cache: 3600000 }), // 1 hour
 		Notes.count({ where: { userHost: null }, cache: 3600000 }),
@@ -64,9 +66,7 @@ export default define(meta, async () => {
 		Users.count({ where: { host: null }, cache: 3600000 }),
 		NoteReactions.count({ cache: 3600000 }), // 1 hour
 		//NoteReactions.count({ where: { userHost: null }, cache: 3600000 }),
-		federationChart.getChart('hour', 1, null).then(chart => chart.instance.total[0]),
-		driveChart.getChart('hour', 1, null).then(chart => chart.local.totalSize[0]),
-		driveChart.getChart('hour', 1, null).then(chart => chart.remote.totalSize[0]),
+		Instances.count({ cache: 3600000 }),
 	]);
 
 	return {
@@ -77,7 +77,7 @@ export default define(meta, async () => {
 		reactionsCount,
 		//originalReactionsCount,
 		instances,
-		driveUsageLocal,
-		driveUsageRemote,
+		driveUsageLocal: 0,
+		driveUsageRemote: 0,
 	};
 });

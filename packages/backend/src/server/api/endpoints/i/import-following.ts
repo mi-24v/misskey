@@ -1,23 +1,15 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { createImportFollowingJob } from '@/queue/index';
+import define from '../../define.js';
+import { createImportFollowingJob } from '@/queue/index.js';
 import ms from 'ms';
-import { ApiError } from '../../error';
-import { DriveFiles } from '@/models/index';
+import { ApiError } from '../../error.js';
+import { DriveFiles } from '@/models/index.js';
 
 export const meta = {
 	secure: true,
-	requireCredential: true as const,
+	requireCredential: true,
 	limit: {
 		duration: ms('1hour'),
 		max: 1,
-	},
-
-	params: {
-		fileId: {
-			validator: $.type(ID),
-		},
 	},
 
 	errors: {
@@ -45,9 +37,18 @@ export const meta = {
 			id: '31a1b42c-06f7-42ae-8a38-a661c5c9f691',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		fileId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['fileId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const file = await DriveFiles.findOne(ps.fileId);
 
 	if (file == null) throw new ApiError(meta.errors.noSuchFile);

@@ -1,26 +1,33 @@
-import define from '../../../define';
-import { UserGroups, UserGroupJoinings } from '@/models/index';
+import define from '../../../define.js';
+import { UserGroups, UserGroupJoinings } from '@/models/index.js';
 import { Not, In } from 'typeorm';
 
 export const meta = {
 	tags: ['groups', 'account'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'read:user-groups',
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			ref: 'UserGroup',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, me) => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, me) => {
 	const ownedGroups = await UserGroups.find({
 		userId: me.id,
 	});

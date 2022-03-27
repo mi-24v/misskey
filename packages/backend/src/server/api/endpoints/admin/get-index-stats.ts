@@ -1,17 +1,21 @@
-import define from '../../define';
+import define from '../../define.js';
 import { getConnection } from 'typeorm';
 
 export const meta = {
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
 	tags: ['admin'],
+} as const;
 
-	params: {
-	},
-};
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
 
-export default define(meta, async () => {
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const stats = await
 		getConnection().query(`SELECT * FROM pg_indexes;`)
 		.then(recs => {

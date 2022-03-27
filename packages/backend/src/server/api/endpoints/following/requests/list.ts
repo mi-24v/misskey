@@ -1,41 +1,48 @@
-import define from '../../../define';
-import { FollowRequests } from '@/models/index';
+import define from '../../../define.js';
+import { FollowRequests } from '@/models/index.js';
 
 export const meta = {
 	tags: ['following', 'account'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'read:following',
 
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				id: {
-					type: 'string' as const,
-					optional: false as const, nullable: false as const,
+					type: 'string',
+					optional: false, nullable: false,
 					format: 'id',
 				},
 				follower: {
-					type: 'object' as const,
-					optional: false as const, nullable: false as const,
-					ref: 'User',
+					type: 'object',
+					optional: false, nullable: false,
+					ref: 'UserLite',
 				},
 				followee: {
-					type: 'object' as const,
-					optional: false as const, nullable: false as const,
-					ref: 'User',
+					type: 'object',
+					optional: false, nullable: false,
+					ref: 'UserLite',
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	const reqs = await FollowRequests.find({
 		followeeId: user.id,
 	});

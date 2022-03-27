@@ -3,252 +3,159 @@
 	<div class="llvierxe" :style="{ backgroundImage: $i.bannerUrl ? `url(${ $i.bannerUrl })` : null }">
 		<div class="avatar _acrylic">
 			<MkAvatar class="avatar" :user="$i" :disable-link="true" @click="changeAvatar"/>
-			<MkButton primary class="avatarEdit" @click="changeAvatar">{{ $ts._profile.changeAvatar }}</MkButton>
+			<MkButton primary class="avatarEdit" @click="changeAvatar">{{ i18n.ts._profile.changeAvatar }}</MkButton>
 		</div>
-		<MkButton primary class="bannerEdit" @click="changeBanner">{{ $ts._profile.changeBanner }}</MkButton>
+		<MkButton primary class="bannerEdit" @click="changeBanner">{{ i18n.ts._profile.changeBanner }}</MkButton>
 	</div>
 
-	<FormInput v-model="name" :max="30" manual-save class="_formBlock">
-		<template #label>{{ $ts._profile.name }}</template>
+	<FormInput v-model="profile.name" :max="30" manual-save class="_formBlock">
+		<template #label>{{ i18n.ts._profile.name }}</template>
 	</FormInput>
 
-	<FormTextarea v-model="description" :max="500" tall manual-save class="_formBlock">
-		<template #label>{{ $ts._profile.description }}</template>
-		<template #caption>{{ $ts._profile.youCanIncludeHashtags }}</template>
+	<FormTextarea v-model="profile.description" :max="500" tall manual-save class="_formBlock">
+		<template #label>{{ i18n.ts._profile.description }}</template>
+		<template #caption>{{ i18n.ts._profile.youCanIncludeHashtags }}</template>
 	</FormTextarea>
 
-	<FormInput v-model="location" manual-save class="_formBlock">
-		<template #label>{{ $ts.location }}</template>
+	<FormInput v-model="profile.location" manual-save class="_formBlock">
+		<template #label>{{ i18n.ts.location }}</template>
 		<template #prefix><i class="fas fa-map-marker-alt"></i></template>
 	</FormInput>
 
-	<FormInput v-model="birthday" type="date" manual-save class="_formBlock">
-		<template #label>{{ $ts.birthday }}</template>
+	<FormInput v-model="profile.birthday" type="date" manual-save class="_formBlock">
+		<template #label>{{ i18n.ts.birthday }}</template>
 		<template #prefix><i class="fas fa-birthday-cake"></i></template>
 	</FormInput>
 
-	<FormSelect v-model="lang" class="_formBlock">
-		<template #label>{{ $ts.language }}</template>
-		<option v-for="x in langs" :key="x[0]" :value="x[0]">{{ x[1] }}</option>
+	<FormSelect v-model="profile.lang" class="_formBlock">
+		<template #label>{{ i18n.ts.language }}</template>
+		<option v-for="x in Object.keys(langmap)" :key="x" :value="x">{{ langmap[x].nativeName }}</option>
 	</FormSelect>
 
-	<FormSlot>
-		<MkButton @click="editMetadata">{{ $ts._profile.metadataEdit }}</MkButton>
-		<template #caption>{{ $ts._profile.metadataDescription }}</template>
+	<FormSlot class="_formBlock">
+		<FormFolder>
+			<template #icon><i class="fas fa-table-list"></i></template>
+			<template #label>{{ i18n.ts._profile.metadataEdit }}</template>
+
+			<div class="_formRoot">
+				<FormSplit v-for="(record, i) in fields" :min-width="250" class="_formBlock">
+					<FormInput v-model="record.name">
+						<template #label>{{ i18n.ts._profile.metadataLabel }} #{{ i + 1 }}</template>
+					</FormInput>
+					<FormInput v-model="record.value">
+						<template #label>{{ i18n.ts._profile.metadataContent }} #{{ i + 1 }}</template>
+					</FormInput>
+				</FormSplit>
+				<MkButton :disabled="fields.length >= 16" inline style="margin-right: 8px;" @click="addField"><i class="fas fa-plus"></i> {{ i18n.ts.add }}</MkButton>
+				<MkButton inline primary @click="saveFields"><i class="fas fa-check"></i> {{ i18n.ts.save }}</MkButton>
+			</div>
+		</FormFolder>
+		<template #caption>{{ i18n.ts._profile.metadataDescription }}</template>
 	</FormSlot>
 
-	<FormSwitch v-model="isCat" class="_formBlock">{{ $ts.flagAsCat }}<template #caption>{{ $ts.flagAsCatDescription }}</template></FormSwitch>
+	<FormSwitch v-model="profile.isCat" class="_formBlock">{{ i18n.ts.flagAsCat }}<template #caption>{{ i18n.ts.flagAsCatDescription }}</template></FormSwitch>
+	<FormSwitch v-model="profile.showTimelineReplies" class="_formBlock">{{ i18n.ts.flagShowTimelineReplies }}<template #caption>{{ i18n.ts.flagShowTimelineRepliesDescription }}</template></FormSwitch>
+	<FormSwitch v-model="profile.isBot" class="_formBlock">{{ i18n.ts.flagAsBot }}<template #caption>{{ i18n.ts.flagAsBotDescription }}</template></FormSwitch>
 
-	<FormSwitch v-model="isBot" class="_formBlock">{{ $ts.flagAsBot }}<template #caption>{{ $ts.flagAsBotDescription }}</template></FormSwitch>
-
-	<FormSwitch v-model="alwaysMarkNsfw" class="_formBlock">{{ $ts.alwaysMarkSensitive }}</FormSwitch>
+	<FormSwitch v-model="profile.alwaysMarkNsfw" class="_formBlock">{{ i18n.ts.alwaysMarkSensitive }}</FormSwitch>
 </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { defineComponent, reactive, watch } from 'vue';
 import MkButton from '@/components/ui/button.vue';
 import FormInput from '@/components/form/input.vue';
 import FormTextarea from '@/components/form/textarea.vue';
 import FormSwitch from '@/components/form/switch.vue';
 import FormSelect from '@/components/form/select.vue';
+import FormSplit from '@/components/form/split.vue';
+import FormFolder from '@/components/form/folder.vue';
 import FormSlot from '@/components/form/slot.vue';
-import { host, langs } from '@/config';
+import { host } from '@/config';
 import { selectFile } from '@/scripts/select-file';
 import * as os from '@/os';
 import * as symbols from '@/symbols';
+import { i18n } from '@/i18n';
+import { $i } from '@/account';
+import { langmap } from '@/scripts/langmap';
 
-export default defineComponent({
-	components: {
-		MkButton,
-		FormInput,
-		FormTextarea,
-		FormSwitch,
-		FormSelect,
-		FormSlot,
+const profile = reactive({
+	name: $i.name,
+	description: $i.description,
+	location: $i.location,
+	birthday: $i.birthday,
+	lang: $i.lang,
+	isBot: $i.isBot,
+	isCat: $i.isCat,
+	showTimelineReplies: $i.showTimelineReplies,
+	alwaysMarkNsfw: $i.alwaysMarkNsfw,
+});
+
+watch(() => profile, () => {
+	save();
+}, {
+	deep: true,
+});
+
+const fields = reactive($i.fields.map(field => ({ name: field.name, value: field.value })));
+
+function addField() {
+	fields.push({
+		name: '',
+		value: '',
+	});
+}
+
+while (fields.length < 4) {
+	addField();
+}
+
+function saveFields() {
+	os.apiWithDialog('i/update', {
+		fields: fields.filter(field => field.name !== '' && field.value !== ''),
+	});
+}
+
+function save() {
+	os.apiWithDialog('i/update', {
+		name: profile.name || null,
+		description: profile.description || null,
+		location: profile.location || null,
+		birthday: profile.birthday || null,
+		lang: profile.lang || null,
+		isBot: !!profile.isBot,
+		isCat: !!profile.isCat,
+		showTimelineReplies: !!profile.showTimelineReplies,
+		alwaysMarkNsfw: !!profile.alwaysMarkNsfw,
+	});
+}
+
+function changeAvatar(ev) {
+	selectFile(ev.currentTarget ?? ev.target, i18n.ts.avatar).then(async (file) => {
+		const i = await os.apiWithDialog('i/update', {
+			avatarId: file.id,
+		});
+		$i.avatarId = i.avatarId;
+		$i.avatarUrl = i.avatarUrl;
+	});
+}
+
+function changeBanner(ev) {
+	selectFile(ev.currentTarget ?? ev.target, i18n.ts.banner).then(async (file) => {
+		const i = await os.apiWithDialog('i/update', {
+			bannerId: file.id,
+		});
+		$i.bannerId = i.bannerId;
+		$i.bannerUrl = i.bannerUrl;
+	});
+}
+
+defineExpose({
+	[symbols.PAGE_INFO]: {
+		title: i18n.ts.profile,
+		icon: 'fas fa-user',
+		bg: 'var(--bg)',
 	},
-	
-	emits: ['info'],
-
-	data() {
-		return {
-			[symbols.PAGE_INFO]: {
-				title: this.$ts.profile,
-				icon: 'fas fa-user',
-				bg: 'var(--bg)',
-			},
-			host,
-			langs,
-			name: null,
-			description: null,
-			birthday: null,
-			lang: null,
-			location: null,
-			fieldName0: null,
-			fieldValue0: null,
-			fieldName1: null,
-			fieldValue1: null,
-			fieldName2: null,
-			fieldValue2: null,
-			fieldName3: null,
-			fieldValue3: null,
-			avatarId: null,
-			bannerId: null,
-			isBot: false,
-			isCat: false,
-			alwaysMarkNsfw: false,
-			saving: false,
-		}
-	},
-
-	created() {
-		this.name = this.$i.name;
-		this.description = this.$i.description;
-		this.location = this.$i.location;
-		this.birthday = this.$i.birthday;
-		this.lang = this.$i.lang;
-		this.avatarId = this.$i.avatarId;
-		this.bannerId = this.$i.bannerId;
-		this.isBot = this.$i.isBot;
-		this.isCat = this.$i.isCat;
-		this.alwaysMarkNsfw = this.$i.alwaysMarkNsfw;
-
-		this.fieldName0 = this.$i.fields[0] ? this.$i.fields[0].name : null;
-		this.fieldValue0 = this.$i.fields[0] ? this.$i.fields[0].value : null;
-		this.fieldName1 = this.$i.fields[1] ? this.$i.fields[1].name : null;
-		this.fieldValue1 = this.$i.fields[1] ? this.$i.fields[1].value : null;
-		this.fieldName2 = this.$i.fields[2] ? this.$i.fields[2].name : null;
-		this.fieldValue2 = this.$i.fields[2] ? this.$i.fields[2].value : null;
-		this.fieldName3 = this.$i.fields[3] ? this.$i.fields[3].name : null;
-		this.fieldValue3 = this.$i.fields[3] ? this.$i.fields[3].value : null;
-
-		this.$watch('name', this.save);
-		this.$watch('description', this.save);
-		this.$watch('location', this.save);
-		this.$watch('birthday', this.save);
-		this.$watch('lang', this.save);
-		this.$watch('isBot', this.save);
-		this.$watch('isCat', this.save);
-		this.$watch('alwaysMarkNsfw', this.save);
-	},
-
-	mounted() {
-		this.$emit('info', this[symbols.PAGE_INFO]);
-	},
-
-	methods: {
-		changeAvatar(e) {
-			selectFile(e.currentTarget || e.target, this.$ts.avatar).then(file => {
-				os.api('i/update', {
-					avatarId: file.id,
-				});
-			});
-		},
-
-		changeBanner(e) {
-			selectFile(e.currentTarget || e.target, this.$ts.banner).then(file => {
-				os.api('i/update', {
-					bannerId: file.id,
-				});
-			});
-		},
-
-		async editMetadata() {
-			const { canceled, result } = await os.form(this.$ts._profile.metadata, {
-				fieldName0: {
-					type: 'string',
-					label: this.$ts._profile.metadataLabel + ' 1',
-					default: this.fieldName0,
-				},
-				fieldValue0: {
-					type: 'string',
-					label: this.$ts._profile.metadataContent + ' 1',
-					default: this.fieldValue0,
-				},
-				fieldName1: {
-					type: 'string',
-					label: this.$ts._profile.metadataLabel + ' 2',
-					default: this.fieldName1,
-				},
-				fieldValue1: {
-					type: 'string',
-					label: this.$ts._profile.metadataContent + ' 2',
-					default: this.fieldValue1,
-				},
-				fieldName2: {
-					type: 'string',
-					label: this.$ts._profile.metadataLabel + ' 3',
-					default: this.fieldName2,
-				},
-				fieldValue2: {
-					type: 'string',
-					label: this.$ts._profile.metadataContent + ' 3',
-					default: this.fieldValue2,
-				},
-				fieldName3: {
-					type: 'string',
-					label: this.$ts._profile.metadataLabel + ' 4',
-					default: this.fieldName3,
-				},
-				fieldValue3: {
-					type: 'string',
-					label: this.$ts._profile.metadataContent + ' 4',
-					default: this.fieldValue3,
-				},
-			});
-			if (canceled) return;
-
-			this.fieldName0 = result.fieldName0;
-			this.fieldValue0 = result.fieldValue0;
-			this.fieldName1 = result.fieldName1;
-			this.fieldValue1 = result.fieldValue1;
-			this.fieldName2 = result.fieldName2;
-			this.fieldValue2 = result.fieldValue2;
-			this.fieldName3 = result.fieldName3;
-			this.fieldValue3 = result.fieldValue3;
-
-			const fields = [
-				{ name: this.fieldName0, value: this.fieldValue0 },
-				{ name: this.fieldName1, value: this.fieldValue1 },
-				{ name: this.fieldName2, value: this.fieldValue2 },
-				{ name: this.fieldName3, value: this.fieldValue3 },
-			];
-
-			os.api('i/update', {
-				fields,
-			}).then(i => {
-				os.success();
-			}).catch(err => {
-				os.alert({
-					type: 'error',
-					text: err.id
-				});
-			});
-		},
-
-		save() {
-			this.saving = true;
-
-			os.apiWithDialog('i/update', {
-				name: this.name || null,
-				description: this.description || null,
-				location: this.location || null,
-				birthday: this.birthday || null,
-				lang: this.lang || null,
-				isBot: !!this.isBot,
-				isCat: !!this.isCat,
-				alwaysMarkNsfw: !!this.alwaysMarkNsfw,
-			}).then(i => {
-				this.saving = false;
-				this.$i.avatarId = i.avatarId;
-				this.$i.avatarUrl = i.avatarUrl;
-				this.$i.bannerId = i.bannerId;
-				this.$i.bannerUrl = i.bannerUrl;
-			}).catch(err => {
-				this.saving = false;
-			});
-		},
-	}
 });
 </script>
 

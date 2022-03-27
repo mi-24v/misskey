@@ -1,16 +1,15 @@
 import ms from 'ms';
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import create from '@/services/drive/add-file';
-import define from '../../../define';
-import { apiLogger } from '../../../logger';
-import { ApiError } from '../../../error';
-import { DriveFiles } from '@/models/index';
+import { addFile } from '@/services/drive/add-file.js';
+import define from '../../../define.js';
+import { apiLogger } from '../../../logger.js';
+import { ApiError } from '../../../error.js';
+import { DriveFiles } from '@/models/index.js';
+import { DB_MAX_IMAGE_COMMENT_LENGTH } from '@/misc/hard-limits.js';
 
 export const meta = {
 	tags: ['drive'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	limit: {
 		duration: ms('1hour'),
@@ -21,33 +20,9 @@ export const meta = {
 
 	kind: 'write:drive',
 
-	params: {
-		folderId: {
-			validator: $.optional.nullable.type(ID),
-			default: null,
-		},
-
-		name: {
-			validator: $.optional.nullable.str,
-			default: null,
-		},
-
-		isSensitive: {
-			validator: $.optional.either($.bool, $.str),
-			default: false,
-			transform: (v: any): boolean => v === true || v === 'true',
-		},
-
-		force: {
-			validator: $.optional.either($.bool, $.str),
-			default: false,
-			transform: (v: any): boolean => v === true || v === 'true',
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'DriveFile',
 	},
 
@@ -58,9 +33,23 @@ export const meta = {
 			id: 'f449b209-0c60-4e51-84d5-29486263bfd4',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user, _, file, cleanup) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		folderId: { type: 'string', format: 'misskey:id', nullable: true, default: null },
+		name: { type: 'string', nullable: true, default: null },
+		comment: { type: 'string', nullable: true, maxLength: DB_MAX_IMAGE_COMMENT_LENGTH, default: null },
+		isSensitive: { type: 'boolean', default: false },
+		force: { type: 'boolean', default: false },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+// @ts-ignore
+export default define(meta, paramDef, async (ps, user, _, file, cleanup) => {
 	// Get 'name' parameter
 	let name = ps.name || file.originalname;
 	if (name !== undefined && name !== null) {
@@ -78,10 +67,12 @@ export default define(meta, async (ps, user, _, file, cleanup) => {
 
 	try {
 		// Create file
-		const driveFile = await create(user, file.path, name, null, ps.folderId, ps.force, false, null, null, ps.isSensitive);
+		const driveFile = await addFile({ user, path: file.path, name, comment: ps.comment, folderId: ps.folderId, force: ps.force, sensitive: ps.isSensitive });
 		return await DriveFiles.pack(driveFile, { self: true });
 	} catch (e) {
-		apiLogger.error(e);
+		if (e instanceof Error || typeof e === 'string') {
+			apiLogger.error(e);
+		}
 		throw new ApiError();
 	} finally {
 		cleanup!();

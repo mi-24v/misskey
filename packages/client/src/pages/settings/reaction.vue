@@ -17,17 +17,26 @@
 		<template #caption>{{ $ts.reactionSettingDescription2 }} <button class="_textButton" @click="preview">{{ $ts.preview }}</button></template>
 	</FromSlot>
 
-	<FormRadios v-model="reactionPickerWidth" class="_formBlock">
-		<template #label>{{ $ts.width }}</template>
+	<FormRadios v-model="reactionPickerSize" class="_formBlock">
+		<template #label>{{ $ts.size }}</template>
 		<option :value="1">{{ $ts.small }}</option>
 		<option :value="2">{{ $ts.medium }}</option>
 		<option :value="3">{{ $ts.large }}</option>
+	</FormRadios>
+	<FormRadios v-model="reactionPickerWidth" class="_formBlock">
+		<template #label>{{ $ts.numberOfColumn }}</template>
+		<option :value="1">5</option>
+		<option :value="2">6</option>
+		<option :value="3">7</option>
+		<option :value="4">8</option>
+		<option :value="5">9</option>
 	</FormRadios>
 	<FormRadios v-model="reactionPickerHeight" class="_formBlock">
 		<template #label>{{ $ts.height }}</template>
 		<option :value="1">{{ $ts.small }}</option>
 		<option :value="2">{{ $ts.medium }}</option>
 		<option :value="3">{{ $ts.large }}</option>
+		<option :value="4">{{ $ts.large }}+</option>
 	</FormRadios>
 
 	<FormSwitch v-model="reactionPickerUseDrawerForMobile" class="_formBlock">
@@ -44,8 +53,8 @@
 </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { watch } from 'vue';
 import XDraggable from 'vuedraggable';
 import FormInput from '@/components/form/input.vue';
 import FormRadios from '@/components/form/radios.vue';
@@ -56,95 +65,71 @@ import FormSwitch from '@/components/form/switch.vue';
 import * as os from '@/os';
 import { defaultStore } from '@/store';
 import * as symbols from '@/symbols';
+import { i18n } from '@/i18n';
 
-export default defineComponent({
-	components: {
-		FormInput,
-		FormButton,
-		FromSlot,
-		FormRadios,
-		FormSection,
-		FormSwitch,
-		XDraggable,
-	},
+let reactions = $ref(JSON.parse(JSON.stringify(defaultStore.state.reactions)));
 
-	emits: ['info'],
-	
-	data() {
-		return {
-			[symbols.PAGE_INFO]: {
-				title: this.$ts.reaction,
-				icon: 'fas fa-laugh',
-				action: {
-					icon: 'fas fa-eye',
-					handler: this.preview
-				},
-				bg: 'var(--bg)',
-			},
-			reactions: JSON.parse(JSON.stringify(this.$store.state.reactions)),
+const reactionPickerSize = $computed(defaultStore.makeGetterSetter('reactionPickerSize'));
+const reactionPickerWidth = $computed(defaultStore.makeGetterSetter('reactionPickerWidth'));
+const reactionPickerHeight = $computed(defaultStore.makeGetterSetter('reactionPickerHeight'));
+const reactionPickerUseDrawerForMobile = $computed(defaultStore.makeGetterSetter('reactionPickerUseDrawerForMobile'));
+
+function save() {
+	defaultStore.set('reactions', reactions);
+}
+
+function remove(reaction, ev: MouseEvent) {
+	os.popupMenu([{
+		text: i18n.ts.remove,
+		action: () => {
+			reactions = reactions.filter(x => x !== reaction);
 		}
-	},
+	}], ev.currentTarget ?? ev.target);
+}
 
-	computed: {
-		reactionPickerWidth: defaultStore.makeGetterSetter('reactionPickerWidth'),
-		reactionPickerHeight: defaultStore.makeGetterSetter('reactionPickerHeight'),
-		reactionPickerUseDrawerForMobile: defaultStore.makeGetterSetter('reactionPickerUseDrawerForMobile'),
-	},
+function preview(ev: MouseEvent) {
+	os.popup(import('@/components/emoji-picker-dialog.vue'), {
+		asReactionPicker: true,
+		src: ev.currentTarget ?? ev.target,
+	}, {}, 'closed');
+}
 
-	watch: {
-		reactions: {
-			handler() {
-				this.save();
-			},
-			deep: true
+async function setDefault() {
+	const { canceled } = await os.confirm({
+		type: 'warning',
+		text: i18n.ts.resetAreYouSure,
+	});
+	if (canceled) return;
+
+	reactions = JSON.parse(JSON.stringify(defaultStore.def.reactions.default));
+}
+
+function chooseEmoji(ev: MouseEvent) {
+	os.pickEmoji(ev.currentTarget ?? ev.target, {
+		showPinned: false
+	}).then(emoji => {
+		if (!reactions.includes(emoji)) {
+			reactions.push(emoji);
 		}
+	});
+}
+
+watch($$(reactions), () => {
+	save();
+}, {
+	deep: true,
+});
+
+defineExpose({
+	[symbols.PAGE_INFO]: {
+		title: i18n.ts.reaction,
+		icon: 'fas fa-laugh',
+		action: {
+			icon: 'fas fa-eye',
+			handler: preview,
+		},
+		bg: 'var(--bg)',
 	},
-
-	mounted() {
-		this.$emit('info', this[symbols.PAGE_INFO]);
-	},
-
-	methods: {
-		save() {
-			this.$store.set('reactions', this.reactions);
-		},
-
-		remove(reaction, ev) {
-			os.popupMenu([{
-				text: this.$ts.remove,
-				action: () => {
-					this.reactions = this.reactions.filter(x => x !== reaction)
-				}
-			}], ev.currentTarget || ev.target);
-		},
-
-		preview(ev) {
-			os.popup(import('@/components/emoji-picker-dialog.vue'), {
-				asReactionPicker: true,
-				src: ev.currentTarget || ev.target,
-			}, {}, 'closed');
-		},
-
-		async setDefault() {
-			const { canceled } = await os.confirm({
-				type: 'warning',
-				text: this.$ts.resetAreYouSure,
-			});
-			if (canceled) return;
-
-			this.reactions = JSON.parse(JSON.stringify(this.$store.def.reactions.default));
-		},
-
-		chooseEmoji(ev) {
-			os.pickEmoji(ev.currentTarget || ev.target, {
-				showPinned: false
-			}).then(emoji => {
-				if (!this.reactions.includes(emoji)) {
-					this.reactions.push(emoji);
-				}
-			});
-		}
-	}
 });
 </script>
 

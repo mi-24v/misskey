@@ -1,116 +1,91 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../define';
-import { AbuseUserReports } from '@/models/index';
-import { makePaginationQuery } from '../../common/make-pagination-query';
+import define from '../../define.js';
+import { AbuseUserReports } from '@/models/index.js';
+import { makePaginationQuery } from '../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['admin'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
-	params: {
-		limit: {
-			validator: $.optional.num.range(1, 100),
-			default: 10,
-		},
-
-		sinceId: {
-			validator: $.optional.type(ID),
-		},
-
-		untilId: {
-			validator: $.optional.type(ID),
-		},
-
-		state: {
-			validator: $.optional.nullable.str,
-			default: null,
-		},
-
-		reporterOrigin: {
-			validator: $.optional.str.or([
-				'combined',
-				'local',
-				'remote',
-			]),
-			default: 'combined',
-		},
-
-		targetUserOrigin: {
-			validator: $.optional.str.or([
-				'combined',
-				'local',
-				'remote',
-			]),
-			default: 'combined',
-		},
-	},
-
 	res: {
-		type: 'array' as const,
-		optional: false as const, nullable: false as const,
+		type: 'array',
+		optional: false, nullable: false,
 		items: {
-			type: 'object' as const,
-			optional: false as const, nullable: false as const,
+			type: 'object',
+			optional: false, nullable: false,
 			properties: {
 				id: {
-					type: 'string' as const,
-					nullable: false as const, optional: false as const,
+					type: 'string',
+					nullable: false, optional: false,
 					format: 'id',
 					example: 'xxxxxxxxxx',
 				},
 				createdAt: {
-					type: 'string' as const,
-					nullable: false as const, optional: false as const,
+					type: 'string',
+					nullable: false, optional: false,
 					format: 'date-time',
 				},
 				comment: {
-					type: 'string' as const,
-					nullable: false as const, optional: false as const,
+					type: 'string',
+					nullable: false, optional: false,
 				},
 				resolved: {
-					type: 'boolean' as const,
-					nullable: false as const, optional: false as const,
+					type: 'boolean',
+					nullable: false, optional: false,
 					example: false,
 				},
 				reporterId: {
-					type: 'string' as const,
-					nullable: false as const, optional: false as const,
+					type: 'string',
+					nullable: false, optional: false,
 					format: 'id',
 				},
 				targetUserId: {
-					type: 'string' as const,
-					nullable: false as const, optional: false as const,
+					type: 'string',
+					nullable: false, optional: false,
 					format: 'id',
 				},
 				assigneeId: {
-					type: 'string' as const,
-					nullable: true as const, optional: false as const,
+					type: 'string',
+					nullable: true, optional: false,
 					format: 'id',
 				},
 				reporter: {
-					type: 'object' as const,
-					nullable: false as const, optional: false as const,
+					type: 'object',
+					nullable: false, optional: false,
 					ref: 'User',
 				},
 				targetUser: {
-					type: 'object' as const,
-					nullable: false as const, optional: false as const,
+					type: 'object',
+					nullable: false, optional: false,
 					ref: 'User',
 				},
 				assignee: {
-					type: 'object' as const,
-					nullable: true as const, optional: true as const,
+					type: 'object',
+					nullable: true, optional: true,
 					ref: 'User',
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+		sinceId: { type: 'string', format: 'misskey:id' },
+		untilId: { type: 'string', format: 'misskey:id' },
+		state: { type: 'string', nullable: true, default: null },
+		reporterOrigin: { type: 'string', enum: ['combined', 'local', 'remote'], default: "combined" },
+		targetUserOrigin: { type: 'string', enum: ['combined', 'local', 'remote'], default: "combined" },
+		forwarded: { type: 'boolean', default: false },
+	},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps) => {
 	const query = makePaginationQuery(AbuseUserReports.createQueryBuilder('report'), ps.sinceId, ps.untilId);
 
 	switch (ps.state) {
@@ -128,7 +103,7 @@ export default define(meta, async (ps) => {
 		case 'remote': query.andWhere('report.targetUserHost IS NOT NULL'); break;
 	}
 
-	const reports = await query.take(ps.limit!).getMany();
+	const reports = await query.take(ps.limit).getMany();
 
 	return await AbuseUserReports.packMany(reports);
 });

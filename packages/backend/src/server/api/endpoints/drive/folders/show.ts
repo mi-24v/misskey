@@ -1,25 +1,17 @@
-import $ from 'cafy';
-import { ID } from '@/misc/cafy-id';
-import define from '../../../define';
-import { ApiError } from '../../../error';
-import { DriveFolders } from '@/models/index';
+import define from '../../../define.js';
+import { ApiError } from '../../../error.js';
+import { DriveFolders } from '@/models/index.js';
 
 export const meta = {
 	tags: ['drive'],
 
-	requireCredential: true as const,
+	requireCredential: true,
 
 	kind: 'read:drive',
 
-	params: {
-		folderId: {
-			validator: $.type(ID),
-		},
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		ref: 'DriveFolder',
 	},
 
@@ -30,9 +22,18 @@ export const meta = {
 			id: 'd74ab9eb-bb09-4bba-bf24-fb58f761e1e9',
 		},
 	},
-};
+} as const;
 
-export default define(meta, async (ps, user) => {
+export const paramDef = {
+	type: 'object',
+	properties: {
+		folderId: { type: 'string', format: 'misskey:id' },
+	},
+	required: ['folderId'],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async (ps, user) => {
 	// Get folder
 	const folder = await DriveFolders.findOne({
 		id: ps.folderId,

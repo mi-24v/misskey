@@ -1,26 +1,30 @@
-import define from '../define';
+import define from '../define.js';
 
 export const meta = {
-	requireCredential: false as const,
+	requireCredential: false,
 
 	tags: ['meta'],
 
-	params: {
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			pong: {
-				type: 'number' as const,
-				optional: false as const, nullable: false as const,
+				type: 'number',
+				optional: false, nullable: false,
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async () => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	return {
 		pong: Date.now(),
 	};

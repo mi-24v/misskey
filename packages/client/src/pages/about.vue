@@ -1,5 +1,5 @@
 <template>
-<MkSpacer :content-max="600" :margin-min="20">
+<MkSpacer v-if="tab === 'overview'" :content-max="600" :margin-min="20">
 	<div class="_formRoot">
 		<div class="_formBlock fwhjspax" :style="{ backgroundImage: `url(${ $instance.bannerUrl })` }">
 			<div class="content">
@@ -24,7 +24,7 @@
 		</FormSection>
 
 		<FormSection>
-			<div class="_inputSplit _formBlock">
+			<FormSplit>
 				<MkKeyValue class="_formBlock">
 					<template #key>{{ $ts.administrator }}</template>
 					<template #value>{{ $instance.maintainerName }}</template>
@@ -33,14 +33,14 @@
 					<template #key>{{ $ts.contact }}</template>
 					<template #value>{{ $instance.maintainerEmail }}</template>
 				</MkKeyValue>
-			</div>
+			</FormSplit>
 			<FormLink v-if="$instance.tosUrl" :to="$instance.tosUrl" class="_formBlock" external>{{ $ts.tos }}</FormLink>
 		</FormSection>
 
 		<FormSuspense :p="initStats">
 			<FormSection>
 				<template #label>{{ $ts.statistics }}</template>
-				<div class="_inputSplit">
+				<FormSplit>
 					<MkKeyValue class="_formBlock">
 						<template #key>{{ $ts.users }}</template>
 						<template #value>{{ number(stats.originalUsersCount) }}</template>
@@ -49,7 +49,7 @@
 						<template #key>{{ $ts.notes }}</template>
 						<template #value>{{ number(stats.originalNotesCount) }}</template>
 					</MkKeyValue>
-				</div>
+				</FormSplit>
 			</FormSection>
 		</FormSuspense>
 
@@ -65,48 +65,50 @@
 		</FormSection>
 	</div>
 </MkSpacer>
+<MkSpacer v-else-if="tab === 'charts'" :content-max="1200" :margin-min="20">
+	<MkInstanceStats :chart-limit="500" :detailed="true"/>
+</MkSpacer>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { ref, computed } from 'vue';
 import { version, instanceName } from '@/config';
 import FormLink from '@/components/form/link.vue';
 import FormSection from '@/components/form/section.vue';
 import FormSuspense from '@/components/form/suspense.vue';
+import FormSplit from '@/components/form/split.vue';
 import MkKeyValue from '@/components/key-value.vue';
+import MkInstanceStats from '@/components/instance-stats.vue';
 import * as os from '@/os';
 import number from '@/filters/number';
 import * as symbols from '@/symbols';
 import { host } from '@/config';
+import { i18n } from '@/i18n';
 
-export default defineComponent({
-	components: {
-		MkKeyValue,
-		FormSection,
-		FormLink,
-		FormSuspense,
-	},
+let stats = $ref(null);
+let tab = $ref('overview');
 
-	data() {
-		return {
-			[symbols.PAGE_INFO]: {
-				title: this.$ts.instanceInfo,
-				icon: 'fas fa-info-circle'
-			},
-			host,
-			version,
-			instanceName,
-			stats: null,
-			initStats: () => os.api('stats', {
-			}).then((stats) => {
-				this.stats = stats;
-			})
-		}
-	},
+const initStats = () => os.api('stats', {
+}).then((res) => {
+	stats = res;
+});
 
-	methods: {
-		number
-	}
+defineExpose({
+	[symbols.PAGE_INFO]: computed(() => ({
+		title: i18n.ts.instanceInfo,
+		icon: 'fas fa-info-circle',
+		bg: 'var(--bg)',
+		tabs: [{
+			active: tab === 'overview',
+			title: i18n.ts.overview,
+			onClick: () => { tab = 'overview'; },
+		}, {
+			active: tab === 'charts',
+			title: i18n.ts.charts,
+			icon: 'fas fa-chart-bar',
+			onClick: () => { tab = 'charts'; },
+		},],
+	})),
 });
 </script>
 

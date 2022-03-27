@@ -1,96 +1,100 @@
-import * as os from 'os';
-import * as si from 'systeminformation';
+import * as os from 'node:os';
+import si from 'systeminformation';
 import { getConnection } from 'typeorm';
-import define from '../../define';
-import { redisClient } from '../../../../db/redis';
+import define from '../../define.js';
+import { redisClient } from '../../../../db/redis.js';
 
 export const meta = {
-	requireCredential: true as const,
+	requireCredential: true,
 	requireModerator: true,
 
 	tags: ['admin', 'meta'],
 
-	params: {
-	},
-
 	res: {
-		type: 'object' as const,
-		optional: false as const, nullable: false as const,
+		type: 'object',
+		optional: false, nullable: false,
 		properties: {
 			machine: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			os: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 				example: 'linux',
 			},
 			node: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			psql: {
-				type: 'string' as const,
-				optional: false as const, nullable: false as const,
+				type: 'string',
+				optional: false, nullable: false,
 			},
 			cpu: {
-				type: 'object' as const,
-				optional: false as const, nullable: false as const,
+				type: 'object',
+				optional: false, nullable: false,
 				properties: {
 					model: {
-						type: 'string' as const,
-						optional: false as const, nullable: false as const,
+						type: 'string',
+						optional: false, nullable: false,
 					},
 					cores: {
-						type: 'number' as const,
-						optional: false as const, nullable: false as const,
+						type: 'number',
+						optional: false, nullable: false,
 					},
 				},
 			},
 			mem: {
-				type: 'object' as const,
-				optional: false as const, nullable: false as const,
+				type: 'object',
+				optional: false, nullable: false,
 				properties: {
 					total: {
-						type: 'number' as const,
-						optional: false as const, nullable: false as const,
+						type: 'number',
+						optional: false, nullable: false,
 						format: 'bytes',
 					},
 				},
 			},
 			fs: {
-				type: 'object' as const,
-				optional: false as const, nullable: false as const,
+				type: 'object',
+				optional: false, nullable: false,
 				properties: {
 					total: {
-						type: 'number' as const,
-						optional: false as const, nullable: false as const,
+						type: 'number',
+						optional: false, nullable: false,
 						format: 'bytes',
 					},
 					used: {
-						type: 'number' as const,
-						optional: false as const, nullable: false as const,
+						type: 'number',
+						optional: false, nullable: false,
 						format: 'bytes',
 					},
 				},
 			},
 			net: {
-				type: 'object' as const,
-				optional: false as const, nullable: false as const,
+				type: 'object',
+				optional: false, nullable: false,
 				properties: {
 					interface: {
-						type: 'string' as const,
-						optional: false as const, nullable: false as const,
+						type: 'string',
+						optional: false, nullable: false,
 						example: 'eth0',
 					},
 				},
 			},
 		},
 	},
-};
+} as const;
 
-export default define(meta, async () => {
+export const paramDef = {
+	type: 'object',
+	properties: {},
+	required: [],
+} as const;
+
+// eslint-disable-next-line import/no-default-export
+export default define(meta, paramDef, async () => {
 	const memStats = await si.mem();
 	const fsStats = await si.fsSize();
 	const netInterface = await si.networkInterfaceDefault();
