@@ -117,7 +117,6 @@ steps:
       password:
         from_secret: dockerhub_password
       squash: true
-      dockerfile: arm64.Dockerfile
     when:
       branch:
         - miwkey-master
@@ -136,7 +135,6 @@ steps:
       password:
         from_secret: dockerhub_password
       squash: true
-      dockerfile: arm64.Dockerfile
     when:
       branch:
         - miwkey-develop
