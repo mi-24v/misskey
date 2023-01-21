@@ -212,43 +212,43 @@ useTooltip(reactionRef, (showing) => {
 }
 
 .t_follow, .t_followRequestAccepted, .t_receiveFollowRequest, .t_groupInvited {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36aed2;
 	pointer-events: none;
 }
 
 .t_renote {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36d298;
 	pointer-events: none;
 }
 
 .t_quote {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36d298;
 	pointer-events: none;
 }
 
 .t_reply {
-	padding: 3px;
+	padding-top: 3px;
 	background: #007aff;
 	pointer-events: none;
 }
 
 .t_mention {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }
 
 .t_pollEnded {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }
 
 .t_achievementEarned {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }
