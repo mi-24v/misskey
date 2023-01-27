@@ -15,7 +15,7 @@
 			<i v-else-if="notification.type === 'mention'" class="ti ti-at"></i>
 			<i v-else-if="notification.type === 'quote'" class="ti ti-quote"></i>
 			<i v-else-if="notification.type === 'pollEnded'" class="ti ti-chart-arrows"></i>
-			<i v-else-if="notification.type === 'achievementEarned'" class="ti ti-military-award"></i>
+			<i v-else-if="notification.type === 'achievementEarned'" class="ti ti-medal"></i>
 			<!-- notification.reaction が null になることはまずないが、ここでoptional chaining使うと一部ブラウザで刺さるので念の為 -->
 			<MkReactionIcon
 				v-else-if="notification.type === 'reaction'"
@@ -212,43 +212,43 @@ useTooltip(reactionRef, (showing) => {
 }
 
 .t_follow, .t_followRequestAccepted, .t_receiveFollowRequest, .t_groupInvited {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36aed2;
 	pointer-events: none;
 }
 
 .t_renote {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36d298;
 	pointer-events: none;
 }
 
 .t_quote {
-	padding: 3px;
+	padding-top: 3px;
 	background: #36d298;
 	pointer-events: none;
 }
 
 .t_reply {
-	padding: 3px;
+	padding-top: 3px;
 	background: #007aff;
 	pointer-events: none;
 }
 
 .t_mention {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }
 
 .t_pollEnded {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }
 
 .t_achievementEarned {
-	padding: 3px;
+	padding-top: 3px;
 	background: #88a6b7;
 	pointer-events: none;
 }

@@ -190,8 +190,8 @@ import { fetchCustomEmojis } from './custom-emojis';
 		window.location.search === '?zen' ? defineAsyncComponent(() => import('@/ui/zen.vue')) :
 		!$i ? defineAsyncComponent(() => import('@/ui/visitor.vue')) :
 		ui === 'deck' ? defineAsyncComponent(() => import('@/ui/deck.vue')) :
-		ui === 'classic' ? defineAsyncComponent(() => import('@/ui/classic.vue')) :
-		defineAsyncComponent(() => import('@/ui/universal.vue')),
+		ui === 'default' ? defineAsyncComponent(() => import('@/ui/universal.vue')) :
+		defineAsyncComponent(() => import('@/ui/classic.vue')),
 	);
 
 	if (_DEV_) {

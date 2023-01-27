@@ -333,8 +333,11 @@ onUnmounted(() => {
 	position: relative;
 	margin-left: 16px;
 	font-size: 0.8em;
-	overflow: auto;
+	overflow: hidden;
 	white-space: nowrap;
+	&:hover {
+		overflow: auto;
+	}
 }
 
 .tab {

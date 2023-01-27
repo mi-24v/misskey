@@ -30,6 +30,19 @@
 
 <a href="https://xn--931a.moe/"><img src="https://github.com/misskey-dev/misskey/blob/develop/assets/ai.png?raw=true" align="right" height="320px"/></a>
 
+## このForkの変更点
+
+- 新しいウィジェットの追加
+	- v11のプロフィールウィジェットに似た物を追加しています
+- 一部デザインの変更
+	- classicモードにてデザインが崩壊するためサイドバーのstickyを消しています(classicのみ)
+	- 概要やアクティビティ等のメニュー一覧でスクロールバーをホバーした際にだけ表示するように
+- 不便な機能の修正
+	- classicモードがウィンドウサイズによって変わった後に元に戻らないなど
+- 一部状態のデフォルト値を変更しています
+	- メニューの位置をデフォルトで上に
+	- uiのモードをデフォルトでclassicに
+
 ## ✨ Features
 - **ActivityPub support**\
 Not on Misskey? No problem! Not only can Misskey instances talk to each other, but you can make friends with people on other networks like Mastodon and Pixelfed!

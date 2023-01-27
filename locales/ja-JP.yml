@@ -1647,6 +1647,7 @@ _weekday:
 
 _widgets:
   profile: "プロフィール"
+  classicProfile: 'クラシックプロフィール'
   instanceInfo: "インスタンス情報"
   memo: "付箋"
   notifications: "通知"
