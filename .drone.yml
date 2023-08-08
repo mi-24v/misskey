@@ -1,0 +1,163 @@
+---
+kind: pipeline
+type: docker
+name: x86_64
+
+workspace:
+  path: /misskey
+
+steps:
+  - name: slack notification on start
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} start: {{build.link}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+
+  - name: build latest image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      tags:
+        - latest
+        - "${DRONE_COMMIT_SHA:0:8}"
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+      squash: true
+    when:
+      branch:
+        - miwkey-master
+      event:
+        - push
+
+  - name: build edge image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      tags:
+        - edge
+        - "${DRONE_COMMIT_SHA}"
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+      squash: true
+    when:
+      branch:
+        - miwkey-develop
+      event:
+        - push
+
+  - name: slack notification on complete
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{#success build.status}}
+           {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 commit {{build.commit}} build #{{build.number}} succeeded: {{build.link}}
+        {{else}}
+        {{repo.owner}}/{{repo.name}} ({{build.branch}}) x86_64 build #{{build.number}} failed: {{build.link}}
+        {{/success}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+      status:
+        - success
+        - failure
+
+---
+kind: pipeline
+type: docker
+name: arm64
+
+workspace:
+  path: /misskey
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: slack notification on start
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 build #{{build.number}} start: {{build.link}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+
+  - name: build latest-arm64 image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      tags: 
+        - latest-arm64
+        - "${DRONE_COMMIT_SHA:0:8}-arm64"
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+      squash: true
+    when:
+      branch:
+        - miwkey-master
+      event:
+        - push
+
+  - name: build edge-arm64 image
+    image: plugins/docker
+    settings:
+      repo: miwpayou0808/misskey
+      tags: 
+        - edge-arm64
+        - "${DRONE_COMMIT_SHA}-arm64"
+      username:
+        from_secret: dockerhub_username
+      password:
+        from_secret: dockerhub_password
+      squash: true
+    when:
+      branch:
+        - miwkey-develop
+      event:
+        - push
+
+  - name: slack notification on complete
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook_url
+      template: >
+        {{#success build.status}}
+          {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 commit {{build.commit}} build #{{build.number}} succeeded: {{build.link}}
+        {{else}}
+          {{repo.owner}}/{{repo.name}} ({{build.branch}}) arm64 build #{{build.number}} failed: {{build.link}}
+        {{/success}}
+    when:
+      branch:
+        - miwkey-master
+        - miwkey-develop
+      event:
+        - push
+      status:
+        - success
+        - failure

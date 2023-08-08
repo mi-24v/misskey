@@ -1,0 +1,16 @@
+version: "1"
+rules:
+  - base: master
+    upstream: syuilo:master
+    mergeMethod: none
+  - base: develop
+    upstream: syuilo:develop
+    mergeMethod: none
+  - base: miwkey-develop
+    upstream: develop
+    mergeMethod: merge
+    conflictReviewers:
+      - mi-24v
+
+label: ":arrow_heading_down: pull"
+conflictLabel: ":exclamation: merge-conflict" 
