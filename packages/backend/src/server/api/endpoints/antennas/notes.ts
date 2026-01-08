@@ -1,11 +1,22 @@
-import define from '../../define.js';
-import readNote from '@/services/note/read.js';
-import { Antennas, Notes, AntennaNotes } from '@/models/index.js';
-import { makePaginationQuery } from '../../common/make-pagination-query.js';
-import { generateVisibilityQuery } from '../../common/generate-visibility-query.js';
-import { generateMutedUserQuery } from '../../common/generate-muted-user-query.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Inject, Injectable } from '@nestjs/common';
+import * as Redis from 'ioredis';
+import { Brackets } from 'typeorm';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import type { NotesRepository, AntennasRepository } from '@/models/_.js';
+import { QueryService } from '@/core/QueryService.js';
+import { DI } from '@/di-symbols.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { IdService } from '@/core/IdService.js';
+import { FanoutTimelineService } from '@/core/FanoutTimelineService.js';
+import { GlobalEventService } from '@/core/GlobalEventService.js';
+import { trackPromise } from '@/misc/promise-tracker.js';
+import { ChannelMutingService } from '@/core/ChannelMutingService.js';
 import { ApiError } from '../../error.js';
-import { generateBlockedUserQuery } from '../../common/generate-block-query.js';
 
 export const meta = {
 	tags: ['antennas', 'account', 'notes'],
@@ -46,44 +57,89 @@ export const paramDef = {
 	required: ['antennaId'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, user) => {
-	const antenna = await Antennas.findOneBy({
-		id: ps.antennaId,
-		userId: user.id,
-	});
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.notesRepository)
+		private notesRepository: NotesRepository,
 
-	if (antenna == null) {
-		throw new ApiError(meta.errors.noSuchAntenna);
+		@Inject(DI.antennasRepository)
+		private antennasRepository: AntennasRepository,
+
+		private idService: IdService,
+		private noteEntityService: NoteEntityService,
+		private queryService: QueryService,
+		private fanoutTimelineService: FanoutTimelineService,
+		private globalEventService: GlobalEventService,
+		private channelMutingService: ChannelMutingService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const untilId = ps.untilId ?? (ps.untilDate ? this.idService.gen(ps.untilDate!) : null);
+			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : null);
+
+			const antenna = await this.antennasRepository.findOneBy({
+				id: ps.antennaId,
+				userId: me.id,
+			});
+
+			if (antenna == null) {
+				throw new ApiError(meta.errors.noSuchAntenna);
+			}
+
+			// falseだった場合はアンテナの配信先が増えたことを通知したい
+			const needPublishEvent = !antenna.isActive;
+
+			antenna.isActive = true;
+			antenna.lastUsedAt = new Date();
+			trackPromise(this.antennasRepository.update(antenna.id, antenna));
+
+			if (needPublishEvent) {
+				this.globalEventService.publishInternalEvent('antennaUpdated', antenna);
+			}
+
+			let noteIds = await this.fanoutTimelineService.get(`antennaTimeline:${antenna.id}`, untilId, sinceId);
+			noteIds = noteIds.slice(0, ps.limit);
+			if (noteIds.length === 0) {
+				return [];
+			}
+
+			const query = this.notesRepository.createQueryBuilder('note')
+				.where('note.id IN (:...noteIds)', { noteIds: noteIds })
+				.innerJoinAndSelect('note.user', 'user')
+				.leftJoinAndSelect('note.reply', 'reply')
+				.leftJoinAndSelect('note.renote', 'renote')
+				.leftJoinAndSelect('reply.user', 'replyUser')
+				.leftJoinAndSelect('renote.user', 'renoteUser');
+
+			// -- ミュートされたチャンネル対策
+			const mutingChannelIds = await this.channelMutingService
+				.list({ requestUserId: me.id }, { idOnly: true })
+				.then(x => x.map(x => x.id));
+			if (mutingChannelIds.length > 0) {
+				query.andWhere(new Brackets(qb => {
+					qb.orWhere('note.channelId IS NULL');
+					qb.orWhere('note.channelId NOT IN (:...mutingChannelIds)', { mutingChannelIds });
+				}));
+				query.andWhere(new Brackets(qb => {
+					qb.orWhere('note.renoteChannelId IS NULL');
+					qb.orWhere('note.renoteChannelId NOT IN (:...mutingChannelIds)', { mutingChannelIds });
+				}));
+			}
+
+			// NOTE: センシティブ除外の設定はこのエンドポイントでは無視する。
+			// https://github.com/misskey-dev/misskey/pull/15346#discussion_r1929950255
+
+			this.queryService.generateVisibilityQuery(query, me);
+			this.queryService.generateBaseNoteFilteringQuery(query, me);
+
+			const notes = await query.getMany();
+			if (sinceId != null && untilId == null) {
+				notes.sort((a, b) => a.id < b.id ? -1 : 1);
+			} else {
+				notes.sort((a, b) => a.id > b.id ? -1 : 1);
+			}
+
+			return await this.noteEntityService.packMany(notes, me);
+		});
 	}
-
-	const query = makePaginationQuery(Notes.createQueryBuilder('note'),
-			ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
-		.innerJoin(AntennaNotes.metadata.targetName, 'antennaNote', 'antennaNote.noteId = note.id')
-		.innerJoinAndSelect('note.user', 'user')
-		.leftJoinAndSelect('user.avatar', 'avatar')
-		.leftJoinAndSelect('user.banner', 'banner')
-		.leftJoinAndSelect('note.reply', 'reply')
-		.leftJoinAndSelect('note.renote', 'renote')
-		.leftJoinAndSelect('reply.user', 'replyUser')
-		.leftJoinAndSelect('replyUser.avatar', 'replyUserAvatar')
-		.leftJoinAndSelect('replyUser.banner', 'replyUserBanner')
-		.leftJoinAndSelect('renote.user', 'renoteUser')
-		.leftJoinAndSelect('renoteUser.avatar', 'renoteUserAvatar')
-		.leftJoinAndSelect('renoteUser.banner', 'renoteUserBanner')
-		.andWhere('antennaNote.antennaId = :antennaId', { antennaId: antenna.id });
-
-	generateVisibilityQuery(query, user);
-	generateMutedUserQuery(query, user);
-	generateBlockedUserQuery(query, user);
-
-	const notes = await query
-		.take(ps.limit)
-		.getMany();
-
-	if (notes.length > 0) {
-		readNote(user.id, notes);
-	}
-
-	return await Notes.packMany(notes, user);
-});
+}

@@ -1,12 +1,18 @@
-import define from '../../../define.js';
-import { Announcements } from '@/models/index.js';
-import { genId } from '@/misc/gen-id.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Injectable } from '@nestjs/common';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { AnnouncementService } from '@/core/AnnouncementService.js';
 
 export const meta = {
 	tags: ['admin'],
 
 	requireCredential: true,
 	requireModerator: true,
+	kind: 'write:admin:announcements',
 
 	res: {
 		type: 'object',
@@ -49,21 +55,38 @@ export const paramDef = {
 	properties: {
 		title: { type: 'string', minLength: 1 },
 		text: { type: 'string', minLength: 1 },
-		imageUrl: { type: 'string', nullable: true, minLength: 1 },
+		imageUrl: { type: 'string', nullable: true, minLength: 0 },
+		icon: { type: 'string', enum: ['info', 'warning', 'error', 'success'], default: 'info' },
+		display: { type: 'string', enum: ['normal', 'banner', 'dialog'], default: 'normal' },
+		forExistingUsers: { type: 'boolean', default: false },
+		silence: { type: 'boolean', default: false },
+		needConfirmationToRead: { type: 'boolean', default: false },
+		userId: { type: 'string', format: 'misskey:id', nullable: true, default: null },
 	},
 	required: ['title', 'text', 'imageUrl'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps) => {
-	const announcement = await Announcements.insert({
-		id: genId(),
-		createdAt: new Date(),
-		updatedAt: null,
-		title: ps.title,
-		text: ps.text,
-		imageUrl: ps.imageUrl,
-	}).then(x => Announcements.findOneByOrFail(x.identifiers[0]));
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		private announcementService: AnnouncementService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const { packed } = await this.announcementService.create({
+				updatedAt: null,
+				title: ps.title,
+				text: ps.text,
+				/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- 空の文字列の場合、nullを渡すようにするため */
+				imageUrl: ps.imageUrl || null,
+				icon: ps.icon,
+				display: ps.display,
+				forExistingUsers: ps.forExistingUsers,
+				silence: ps.silence,
+				needConfirmationToRead: ps.needConfirmationToRead,
+				userId: ps.userId,
+			}, me);
 
-	return Object.assign({}, announcement, { createdAt: announcement.createdAt.toISOString(), updatedAt: null });
-});
+			return packed;
+		});
+	}
+}

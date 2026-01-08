@@ -1,9 +1,18 @@
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 import { IsNull } from 'typeorm';
-import { Users, Followings, UserProfiles } from '@/models/index.js';
-import { toPunyNullable } from '@/misc/convert-host.js';
-import define from '../../define.js';
+import { Inject, Injectable } from '@nestjs/common';
+import type { UsersRepository, FollowingsRepository, UserProfilesRepository } from '@/models/_.js';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { QueryService } from '@/core/QueryService.js';
+import { FollowingEntityService } from '@/core/entities/FollowingEntityService.js';
+import { UtilityService } from '@/core/UtilityService.js';
+import { DI } from '@/di-symbols.js';
+import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
-import { makePaginationQuery } from '../../common/make-pagination-query.js';
 
 export const meta = {
 	tags: ['users'],
@@ -38,70 +47,102 @@ export const meta = {
 } as const;
 
 export const paramDef = {
-	type: 'object',
-	properties: {
-		sinceId: { type: 'string', format: 'misskey:id' },
-		untilId: { type: 'string', format: 'misskey:id' },
-		limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
-	},
-	anyOf: [
+	allOf: [
 		{
-			properties: {
-				userId: { type: 'string', format: 'misskey:id' },
-			},
-			required: ['userId'],
+			anyOf: [
+				{
+					type: 'object',
+					properties: {
+						userId: { type: 'string', format: 'misskey:id' },
+					},
+					required: ['userId'],
+				},
+				{
+					type: 'object',
+					properties: {
+						username: { type: 'string' },
+						host: {
+							type: 'string',
+							nullable: true,
+							description: 'The local host is represented with `null`.',
+						},
+					},
+					required: ['username', 'host'],
+				},
+			],
 		},
 		{
+			type: 'object',
 			properties: {
-				username: { type: 'string' },
-				host: {
-					type: 'string',
-					nullable: true,
-					description: 'The local host is represented with `null`.',
-				},
+				sinceId: { type: 'string', format: 'misskey:id' },
+				untilId: { type: 'string', format: 'misskey:id' },
+				sinceDate: { type: 'integer' },
+				untilDate: { type: 'integer' },
+				limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
 			},
-			required: ['username', 'host'],
 		},
 	],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, me) => {
-	const user = await Users.findOneBy(ps.userId != null
-		? { id: ps.userId }
-		: { usernameLower: ps.username!.toLowerCase(), host: toPunyNullable(ps.host) ?? IsNull() });
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
-	if (user == null) {
-		throw new ApiError(meta.errors.noSuchUser);
-	}
+		@Inject(DI.userProfilesRepository)
+		private userProfilesRepository: UserProfilesRepository,
 
-	const profile = await UserProfiles.findOneByOrFail({ userId: user.id });
+		@Inject(DI.followingsRepository)
+		private followingsRepository: FollowingsRepository,
 
-	if (profile.ffVisibility === 'private') {
-		if (me == null || (me.id !== user.id)) {
-			throw new ApiError(meta.errors.forbidden);
-		}
-	} else if (profile.ffVisibility === 'followers') {
-		if (me == null) {
-			throw new ApiError(meta.errors.forbidden);
-		} else if (me.id !== user.id) {
-			const following = await Followings.findOneBy({
-				followeeId: user.id,
-				followerId: me.id,
-			});
-			if (following == null) {
-				throw new ApiError(meta.errors.forbidden);
+		private utilityService: UtilityService,
+		private followingEntityService: FollowingEntityService,
+		private queryService: QueryService,
+		private roleService: RoleService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const user = await this.usersRepository.findOneBy('userId' in ps
+				? { id: ps.userId }
+				: { usernameLower: ps.username.toLowerCase(), host: this.utilityService.toPunyNullable(ps.host) ?? IsNull() });
+
+			if (user == null) {
+				throw new ApiError(meta.errors.noSuchUser);
 			}
-		}
+
+			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: user.id });
+
+			if (profile.followersVisibility !== 'public' && !await this.roleService.isModerator(me)) {
+				if (profile.followersVisibility === 'private') {
+					if (me == null || (me.id !== user.id)) {
+						throw new ApiError(meta.errors.forbidden);
+					}
+				} else if (profile.followersVisibility === 'followers') {
+					if (me == null) {
+						throw new ApiError(meta.errors.forbidden);
+					} else if (me.id !== user.id) {
+						const isFollowing = await this.followingsRepository.exists({
+							where: {
+								followeeId: user.id,
+								followerId: me.id,
+							},
+						});
+						if (!isFollowing) {
+							throw new ApiError(meta.errors.forbidden);
+						}
+					}
+				}
+			}
+
+			const query = this.queryService.makePaginationQuery(this.followingsRepository.createQueryBuilder('following'), ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
+				.andWhere('following.followeeId = :userId', { userId: user.id })
+				.innerJoinAndSelect('following.follower', 'follower');
+
+			const followings = await query
+				.limit(ps.limit)
+				.getMany();
+
+			return await this.followingEntityService.packMany(followings, me, { populateFollower: true });
+		});
 	}
-
-	const query = makePaginationQuery(Followings.createQueryBuilder('following'), ps.sinceId, ps.untilId)
-		.andWhere('following.followeeId = :userId', { userId: user.id })
-		.innerJoinAndSelect('following.follower', 'follower');
-
-	const followings = await query
-		.take(ps.limit)
-		.getMany();
-
-	return await Followings.packMany(followings, me, { populateFollower: true });
-});
+}

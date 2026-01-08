@@ -1,6 +1,14 @@
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 import { IsNull } from 'typeorm';
-import { Users, UsedUsernames } from '@/models/index.js';
-import define from '../../define.js';
+import { Inject, Injectable } from '@nestjs/common';
+import type { MiMeta, UsedUsernamesRepository, UsersRepository } from '@/models/_.js';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { localUsernameSchema } from '@/models/User.js';
+import { DI } from '@/di-symbols.js';
 
 export const meta = {
 	tags: ['users'],
@@ -22,22 +30,36 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		username: Users.localUsernameSchema,
+		username: localUsernameSchema,
 	},
 	required: ['username'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps) => {
-	// Get exist
-	const exist = await Users.countBy({
-		host: IsNull(),
-		usernameLower: ps.username.toLowerCase(),
-	});
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.meta)
+		private serverSettings: MiMeta,
 
-	const exist2 = await UsedUsernames.countBy({ username: ps.username.toLowerCase() });
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
-	return {
-		available: exist === 0 && exist2 === 0,
-	};
-});
+		@Inject(DI.usedUsernamesRepository)
+		private usedUsernamesRepository: UsedUsernamesRepository,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const exist = await this.usersRepository.countBy({
+				host: IsNull(),
+				usernameLower: ps.username.toLowerCase(),
+			});
+
+			const exist2 = await this.usedUsernamesRepository.countBy({ username: ps.username.toLowerCase() });
+
+			const isPreserved = this.serverSettings.preservedUsernames.map(x => x.toLowerCase()).includes(ps.username.toLowerCase());
+
+			return {
+				available: exist === 0 && exist2 === 0 && !isPreserved,
+			};
+		});
+	}
+}

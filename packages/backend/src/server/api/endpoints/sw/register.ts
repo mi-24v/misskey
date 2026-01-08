@@ -1,12 +1,20 @@
-import { fetchMeta } from '@/misc/fetch-meta.js';
-import { genId } from '@/misc/gen-id.js';
-import { SwSubscriptions } from '@/models/index.js';
-import define from '../../define.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Inject, Injectable } from '@nestjs/common';
+import { IdService } from '@/core/IdService.js';
+import type { MiMeta, SwSubscriptionsRepository } from '@/models/_.js';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { DI } from '@/di-symbols.js';
+import { PushNotificationService } from '@/core/PushNotificationService.js';
 
 export const meta = {
 	tags: ['account'],
 
 	requireCredential: true,
+	secure: true,
 
 	description: 'Register to receive push notifications.',
 
@@ -23,6 +31,18 @@ export const meta = {
 				type: 'string',
 				optional: false, nullable: true,
 			},
+			userId: {
+				type: 'string',
+				optional: false, nullable: false,
+			},
+			endpoint: {
+				type: 'string',
+				optional: false, nullable: false,
+			},
+			sendReadMessage: {
+				type: 'boolean',
+				optional: false, nullable: false,
+			},
 		},
 	},
 } as const;
@@ -33,40 +53,60 @@ export const paramDef = {
 		endpoint: { type: 'string' },
 		auth: { type: 'string' },
 		publickey: { type: 'string' },
+		sendReadMessage: { type: 'boolean', default: false },
 	},
 	required: ['endpoint', 'auth', 'publickey'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, user) => {
-	// if already subscribed
-	const exist = await SwSubscriptions.findOneBy({
-		userId: user.id,
-		endpoint: ps.endpoint,
-		auth: ps.auth,
-		publickey: ps.publickey,
-	});
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.meta)
+		private serverSettings: MiMeta,
 
-	const instance = await fetchMeta(true);
+		@Inject(DI.swSubscriptionsRepository)
+		private swSubscriptionsRepository: SwSubscriptionsRepository,
 
-	if (exist != null) {
-		return {
-			state: 'already-subscribed' as const,
-			key: instance.swPublicKey,
-		};
+		private idService: IdService,
+		private pushNotificationService: PushNotificationService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			// if already subscribed
+			const exist = await this.swSubscriptionsRepository.findOneBy({
+				userId: me.id,
+				endpoint: ps.endpoint,
+				auth: ps.auth,
+				publickey: ps.publickey,
+			});
+
+			if (exist != null) {
+				return {
+					state: 'already-subscribed' as const,
+					key: this.serverSettings.swPublicKey,
+					userId: me.id,
+					endpoint: exist.endpoint,
+					sendReadMessage: exist.sendReadMessage,
+				};
+			}
+
+			await this.swSubscriptionsRepository.insert({
+				id: this.idService.gen(),
+				userId: me.id,
+				endpoint: ps.endpoint,
+				auth: ps.auth,
+				publickey: ps.publickey,
+				sendReadMessage: ps.sendReadMessage,
+			});
+
+			this.pushNotificationService.refreshCache(me.id);
+
+			return {
+				state: 'subscribed' as const,
+				key: this.serverSettings.swPublicKey,
+				userId: me.id,
+				endpoint: ps.endpoint,
+				sendReadMessage: ps.sendReadMessage,
+			};
+		});
 	}
-
-	await SwSubscriptions.insert({
-		id: genId(),
-		createdAt: new Date(),
-		userId: user.id,
-		endpoint: ps.endpoint,
-		auth: ps.auth,
-		publickey: ps.publickey,
-	});
-
-	return {
-		state: 'subscribed' as const,
-		key: instance.swPublicKey,
-	};
-});
+}

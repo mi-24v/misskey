@@ -1,6 +1,14 @@
-import define from '../../define.js';
-import { makePaginationQuery } from '../../common/make-pagination-query.js';
-import { Mutings } from '@/models/index.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Inject, Injectable } from '@nestjs/common';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import type { MutingsRepository } from '@/models/_.js';
+import { QueryService } from '@/core/QueryService.js';
+import { MutingEntityService } from '@/core/entities/MutingEntityService.js';
+import { DI } from '@/di-symbols.js';
 
 export const meta = {
 	tags: ['account'],
@@ -26,18 +34,30 @@ export const paramDef = {
 		limit: { type: 'integer', minimum: 1, maximum: 100, default: 30 },
 		sinceId: { type: 'string', format: 'misskey:id' },
 		untilId: { type: 'string', format: 'misskey:id' },
+		sinceDate: { type: 'integer' },
+		untilDate: { type: 'integer' },
 	},
 	required: [],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, me) => {
-	const query = makePaginationQuery(Mutings.createQueryBuilder('muting'), ps.sinceId, ps.untilId)
-		.andWhere(`muting.muterId = :meId`, { meId: me.id });
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.mutingsRepository)
+		private mutingsRepository: MutingsRepository,
 
-	const mutings = await query
-		.take(ps.limit)
-		.getMany();
+		private mutingEntityService: MutingEntityService,
+		private queryService: QueryService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const query = this.queryService.makePaginationQuery(this.mutingsRepository.createQueryBuilder('muting'), ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
+				.andWhere('muting.muterId = :meId', { meId: me.id });
 
-	return await Mutings.packMany(mutings, me);
-});
+			const mutings = await query
+				.limit(ps.limit)
+				.getMany();
+
+			return await this.mutingEntityService.packMany(mutings, me);
+		});
+	}
+}

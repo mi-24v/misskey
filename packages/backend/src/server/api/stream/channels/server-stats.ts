@@ -1,30 +1,48 @@
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 import Xev from 'xev';
-import Channel from '../channel.js';
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import { bindThis } from '@/decorators.js';
+import { isJsonObject } from '@/misc/json-value.js';
+import type { JsonObject, JsonValue } from '@/misc/json-value.js';
+import Channel, { type ChannelRequest } from '../channel.js';
+import { REQUEST } from '@nestjs/core';
 
 const ev = new Xev();
 
-export default class extends Channel {
+@Injectable({ scope: Scope.TRANSIENT })
+export class ServerStatsChannel extends Channel {
 	public readonly chName = 'serverStats';
 	public static shouldShare = true;
-	public static requireCredential = false;
+	public static requireCredential = false as const;
 
-	constructor(id: string, connection: Channel['connection']) {
-		super(id, connection);
-		this.onStats = this.onStats.bind(this);
-		this.onMessage = this.onMessage.bind(this);
+	constructor(
+		@Inject(REQUEST)
+		request: ChannelRequest,
+	) {
+		super(request);
+		//this.onStats = this.onStats.bind(this);
+		//this.onMessage = this.onMessage.bind(this);
 	}
 
-	public async init(params: any) {
+	@bindThis
+	public async init(params: JsonObject) {
 		ev.addListener('serverStats', this.onStats);
 	}
 
-	private onStats(stats: any) {
+	@bindThis
+	private onStats(stats: JsonObject) {
 		this.send('stats', stats);
 	}
 
-	public onMessage(type: string, body: any) {
+	@bindThis
+	public onMessage(type: string, body: JsonValue) {
 		switch (type) {
 			case 'requestLog':
+				if (!isJsonObject(body)) return;
 				ev.once(`serverStatsLog:${body.id}`, statsLog => {
 					this.send('statsLog', statsLog);
 				});
@@ -36,6 +54,7 @@ export default class extends Channel {
 		}
 	}
 
+	@bindThis
 	public dispose() {
 		ev.removeListener('serverStats', this.onStats);
 	}

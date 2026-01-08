@@ -1,16 +1,21 @@
-import define from '../../define.js';
-import deleteFollowing from '@/services/following/delete.js';
-import { Users, Followings, Notifications } from '@/models/index.js';
-import { User } from '@/models/entities/user.js';
-import { insertModerationLog } from '@/services/insert-moderation-log.js';
-import { doPostSuspend } from '@/services/suspend-user.js';
-import { publishUserEvent } from '@/services/stream.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Inject, Injectable } from '@nestjs/common';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import type { UsersRepository } from '@/models/_.js';
+import { UserSuspendService } from '@/core/UserSuspendService.js';
+import { DI } from '@/di-symbols.js';
+import { RoleService } from '@/core/RoleService.js';
 
 export const meta = {
 	tags: ['admin'],
 
 	requireCredential: true,
 	requireModerator: true,
+	kind: 'write:admin:suspend-user',
 } as const;
 
 export const paramDef = {
@@ -21,65 +26,27 @@ export const paramDef = {
 	required: ['userId'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, me) => {
-	const user = await Users.findOneBy({ id: ps.userId });
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
-	if (user == null) {
-		throw new Error('user not found');
-	}
+		private userSuspendService: UserSuspendService,
+		private roleService: RoleService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const user = await this.usersRepository.findOneBy({ id: ps.userId });
 
-	if (user.isAdmin) {
-		throw new Error('cannot suspend admin');
-	}
+			if (user == null) {
+				throw new Error('user not found');
+			}
 
-	if (user.isModerator) {
-		throw new Error('cannot suspend moderator');
-	}
+			if (await this.roleService.isModerator(user)) {
+				throw new Error('cannot suspend moderator account');
+			}
 
-	await Users.update(user.id, {
-		isSuspended: true,
-	});
-
-	insertModerationLog(me, 'suspend', {
-		targetId: user.id,
-	});
-
-	// Terminate streaming
-	if (Users.isLocalUser(user)) {
-		publishUserEvent(user.id, 'terminate', {});
-	}
-
-	(async () => {
-		await doPostSuspend(user).catch(e => {});
-		await unFollowAll(user).catch(e => {});
-		await readAllNotify(user).catch(e => {});
-	})();
-});
-
-async function unFollowAll(follower: User) {
-	const followings = await Followings.findBy({
-		followerId: follower.id,
-	});
-
-	for (const following of followings) {
-		const followee = await Users.findOneBy({
-			id: following.followeeId,
+			await this.userSuspendService.suspend(user, me);
 		});
-
-		if (followee == null) {
-			throw `Cant find followee ${following.followeeId}`;
-		}
-
-		await deleteFollowing(follower, followee, true);
 	}
-}
-
-async function readAllNotify(notifier: User) {
-	await Notifications.update({
-		notifierId: notifier.id,
-		isRead: false,
-	}, {
-		isRead: true,
-	});
 }

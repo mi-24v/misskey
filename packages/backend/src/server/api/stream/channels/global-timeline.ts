@@ -1,75 +1,76 @@
-import Channel from '../channel.js';
-import { fetchMeta } from '@/misc/fetch-meta.js';
-import { Notes } from '@/models/index.js';
-import { checkWordMute } from '@/misc/check-word-mute.js';
-import { isInstanceMuted } from '@/misc/is-instance-muted.js';
-import { isUserRelated } from '@/misc/is-user-related.js';
-import { Packed } from '@/misc/schema.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
-export default class extends Channel {
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import type { Packed } from '@/misc/json-schema.js';
+import { MetaService } from '@/core/MetaService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { bindThis } from '@/decorators.js';
+import { RoleService } from '@/core/RoleService.js';
+import { isRenotePacked, isQuotePacked } from '@/misc/is-renote.js';
+import type { JsonObject } from '@/misc/json-value.js';
+import Channel, { type ChannelRequest } from '../channel.js';
+import { REQUEST } from '@nestjs/core';
+
+@Injectable({ scope: Scope.TRANSIENT })
+export class GlobalTimelineChannel extends Channel {
 	public readonly chName = 'globalTimeline';
-	public static shouldShare = true;
-	public static requireCredential = false;
+	public static shouldShare = false;
+	public static requireCredential = false as const;
+	private withRenotes: boolean;
+	private withFiles: boolean;
 
-	constructor(id: string, connection: Channel['connection']) {
-		super(id, connection);
-		this.onNote = this.onNote.bind(this);
+	constructor(
+		@Inject(REQUEST)
+		request: ChannelRequest,
+
+		private metaService: MetaService,
+		private roleService: RoleService,
+		private noteEntityService: NoteEntityService,
+	) {
+		super(request);
+		//this.onNote = this.onNote.bind(this);
 	}
 
-	public async init(params: any) {
-		const meta = await fetchMeta();
-		if (meta.disableGlobalTimeline) {
-			if (this.user == null || (!this.user.isAdmin && !this.user.isModerator)) return;
-		}
+	@bindThis
+	public async init(params: JsonObject) {
+		const policies = await this.roleService.getUserPolicies(this.user ? this.user.id : null);
+		if (!policies.gtlAvailable) return;
+
+		this.withRenotes = !!(params.withRenotes ?? true);
+		this.withFiles = !!(params.withFiles ?? false);
 
 		// Subscribe events
 		this.subscriber.on('notesStream', this.onNote);
 	}
 
+	@bindThis
 	private async onNote(note: Packed<'Note'>) {
+		if (this.withFiles && (note.fileIds == null || note.fileIds.length === 0)) return;
+
 		if (note.visibility !== 'public') return;
 		if (note.channelId != null) return;
+		if (note.user.requireSigninToViewContents && this.user == null) return;
+		if (note.renote && note.renote.user.requireSigninToViewContents && this.user == null) return;
+		if (note.reply && note.reply.user.requireSigninToViewContents && this.user == null) return;
 
-		// リプライなら再pack
-		if (note.replyId != null) {
-			note.reply = await Notes.pack(note.replyId, this.user, {
-				detail: true,
-			});
+		if (isRenotePacked(note) && !isQuotePacked(note) && !this.withRenotes) return;
+
+		if (this.isNoteMutedOrBlocked(note)) return;
+
+		if (this.user && isRenotePacked(note) && !isQuotePacked(note)) {
+			if (note.renote && Object.keys(note.renote.reactions).length > 0) {
+				const myRenoteReaction = await this.noteEntityService.populateMyReaction(note.renote, this.user.id);
+				note.renote.myReaction = myRenoteReaction;
+			}
 		}
-		// Renoteなら再pack
-		if (note.renoteId != null) {
-			note.renote = await Notes.pack(note.renoteId, this.user, {
-				detail: true,
-			});
-		}
-
-		// 関係ない返信は除外
-		if (note.reply && !this.user!.showTimelineReplies) {
-			const reply = note.reply;
-			// 「チャンネル接続主への返信」でもなければ、「チャンネル接続主が行った返信」でもなければ、「投稿者の投稿者自身への返信」でもない場合
-			if (reply.userId !== this.user!.id && note.userId !== this.user!.id && reply.userId !== note.userId) return;
-		}
-
-		// Ignore notes from instances the user has muted
-		if (isInstanceMuted(note, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
-
-		// 流れてきたNoteがミュートしているユーザーが関わるものだったら無視する
-		if (isUserRelated(note, this.muting)) return;
-		// 流れてきたNoteがブロックされているユーザーが関わるものだったら無視する
-		if (isUserRelated(note, this.blocking)) return;
-
-		// 流れてきたNoteがミュートすべきNoteだったら無視する
-		// TODO: 将来的には、単にMutedNoteテーブルにレコードがあるかどうかで判定したい(以下の理由により難しそうではある)
-		// 現状では、ワードミュートにおけるMutedNoteレコードの追加処理はストリーミングに流す処理と並列で行われるため、
-		// レコードが追加されるNoteでも追加されるより先にここのストリーミングの処理に到達することが起こる。
-		// そのためレコードが存在するかのチェックでは不十分なので、改めてcheckWordMuteを呼んでいる
-		if (this.userProfile && await checkWordMute(note, this.user, this.userProfile.mutedWords)) return;
-
-		this.connection.cacheNote(note);
 
 		this.send('note', note);
 	}
 
+	@bindThis
 	public dispose() {
 		// Unsubscribe events
 		this.subscriber.off('notesStream', this.onNote);

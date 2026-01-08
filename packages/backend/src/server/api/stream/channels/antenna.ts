@@ -1,36 +1,49 @@
-import Channel from '../channel.js';
-import { Notes } from '@/models/index.js';
-import { isUserRelated } from '@/misc/is-user-related.js';
-import { StreamMessages } from '../types.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
-export default class extends Channel {
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { bindThis } from '@/decorators.js';
+import type { GlobalEvents } from '@/core/GlobalEventService.js';
+import type { JsonObject } from '@/misc/json-value.js';
+import Channel, { type ChannelRequest } from '../channel.js';
+import { REQUEST } from '@nestjs/core';
+
+@Injectable({ scope: Scope.TRANSIENT })
+export class AntennaChannel extends Channel {
 	public readonly chName = 'antenna';
 	public static shouldShare = false;
-	public static requireCredential = false;
+	public static requireCredential = true as const;
+	public static kind = 'read:account';
 	private antennaId: string;
 
-	constructor(id: string, connection: Channel['connection']) {
-		super(id, connection);
-		this.onEvent = this.onEvent.bind(this);
+	constructor(
+		@Inject(REQUEST)
+		request: ChannelRequest,
+
+		private noteEntityService: NoteEntityService,
+	) {
+		super(request);
+		//this.onEvent = this.onEvent.bind(this);
 	}
 
-	public async init(params: any) {
-		this.antennaId = params.antennaId as string;
+	@bindThis
+	public async init(params: JsonObject) {
+		if (typeof params.antennaId !== 'string') return;
+		this.antennaId = params.antennaId;
 
 		// Subscribe stream
 		this.subscriber.on(`antennaStream:${this.antennaId}`, this.onEvent);
 	}
 
-	private async onEvent(data: StreamMessages['antenna']['payload']) {
+	@bindThis
+	private async onEvent(data: GlobalEvents['antenna']['payload']) {
 		if (data.type === 'note') {
-			const note = await Notes.pack(data.body.id, this.user, { detail: true });
+			const note = await this.noteEntityService.pack(data.body.id, this.user, { detail: true });
 
-			// 流れてきたNoteがミュートしているユーザーが関わるものだったら無視する
-			if (isUserRelated(note, this.muting)) return;
-			// 流れてきたNoteがブロックされているユーザーが関わるものだったら無視する
-			if (isUserRelated(note, this.blocking)) return;
-
-			this.connection.cacheNote(note);
+			if (this.isNoteMutedOrBlocked(note)) return;
 
 			this.send('note', note);
 		} else {
@@ -38,6 +51,7 @@ export default class extends Channel {
 		}
 	}
 
+	@bindThis
 	public dispose() {
 		// Unsubscribe events
 		this.subscriber.off(`antennaStream:${this.antennaId}`, this.onEvent);

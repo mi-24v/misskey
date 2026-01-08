@@ -1,91 +1,97 @@
-import Channel from '../channel.js';
-import { Notes, Users } from '@/models/index.js';
-import { isUserRelated } from '@/misc/is-user-related.js';
-import { User } from '@/models/entities/user.js';
-import { StreamMessages } from '../types.js';
-import { Packed } from '@/misc/schema.js';
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
-export default class extends Channel {
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import type { Packed } from '@/misc/json-schema.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { bindThis } from '@/decorators.js';
+import { isRenotePacked, isQuotePacked } from '@/misc/is-renote.js';
+import { isInstanceMuted } from '@/misc/is-instance-muted.js';
+import { isUserRelated } from '@/misc/is-user-related.js';
+import type { JsonObject } from '@/misc/json-value.js';
+import Channel, { type ChannelRequest } from '../channel.js';
+import { REQUEST } from '@nestjs/core';
+
+@Injectable({ scope: Scope.TRANSIENT })
+export class ChannelChannel extends Channel {
 	public readonly chName = 'channel';
 	public static shouldShare = false;
-	public static requireCredential = false;
+	public static requireCredential = false as const;
 	private channelId: string;
-	private typers: Record<User['id'], Date> = {};
-	private emitTypersIntervalId: ReturnType<typeof setInterval>;
 
-	constructor(id: string, connection: Channel['connection']) {
-		super(id, connection);
-		this.onNote = this.onNote.bind(this);
-		this.emitTypers = this.emitTypers.bind(this);
+	constructor(
+		@Inject(REQUEST)
+		request: ChannelRequest,
+
+		private noteEntityService: NoteEntityService,
+	) {
+		super(request);
+		//this.onNote = this.onNote.bind(this);
 	}
 
-	public async init(params: any) {
-		this.channelId = params.channelId as string;
+	@bindThis
+	public async init(params: JsonObject) {
+		if (typeof params.channelId !== 'string') return;
+		this.channelId = params.channelId;
 
 		// Subscribe stream
 		this.subscriber.on('notesStream', this.onNote);
-		this.subscriber.on(`channelStream:${this.channelId}`, this.onEvent);
-		this.emitTypersIntervalId = setInterval(this.emitTypers, 5000);
 	}
 
+	@bindThis
 	private async onNote(note: Packed<'Note'>) {
 		if (note.channelId !== this.channelId) return;
 
-		// リプライなら再pack
-		if (note.replyId != null) {
-			note.reply = await Notes.pack(note.replyId, this.user, {
-				detail: true,
-			});
-		}
-		// Renoteなら再pack
-		if (note.renoteId != null) {
-			note.renote = await Notes.pack(note.renoteId, this.user, {
-				detail: true,
-			});
-		}
+		if (note.user.requireSigninToViewContents && this.user == null) return;
+		if (note.renote && note.renote.user.requireSigninToViewContents && this.user == null) return;
+		if (note.reply && note.reply.user.requireSigninToViewContents && this.user == null) return;
 
-		// 流れてきたNoteがミュートしているユーザーが関わるものだったら無視する
-		if (isUserRelated(note, this.muting)) return;
-		// 流れてきたNoteがブロックされているユーザーが関わるものだったら無視する
-		if (isUserRelated(note, this.blocking)) return;
+		if (this.isNoteMutedOrBlocked(note)) return;
 
-		this.connection.cacheNote(note);
+		if (this.user && isRenotePacked(note) && !isQuotePacked(note)) {
+			if (note.renote && Object.keys(note.renote.reactions).length > 0) {
+				const myRenoteReaction = await this.noteEntityService.populateMyReaction(note.renote, this.user.id);
+				note.renote.myReaction = myRenoteReaction;
+			}
+		}
 
 		this.send('note', note);
 	}
 
-	private onEvent(data: StreamMessages['channel']['payload']) {
-		if (data.type === 'typing') {
-			const id = data.body;
-			const begin = this.typers[id] == null;
-			this.typers[id] = new Date();
-			if (begin) {
-				this.emitTypers();
-			}
+	/*
+	 * ミュートとブロックされてるを処理する
+	 */
+	protected override isNoteMutedOrBlocked(note: Packed<'Note'>): boolean {
+		// 流れてきたNoteがインスタンスミュートしたインスタンスが関わる
+		if (isInstanceMuted(note, new Set<string>(this.userProfile?.mutedInstances ?? []))) return true;
+
+		// 流れてきたNoteがミュートしているユーザーが関わる
+		if (isUserRelated(note, this.userIdsWhoMeMuting)) return true;
+		// 流れてきたNoteがブロックされているユーザーが関わる
+		if (isUserRelated(note, this.userIdsWhoBlockingMe)) return true;
+
+		// 流れてきたNoteがリノートをミュートしてるユーザが行ったもの
+		if (isRenotePacked(note) && !isQuotePacked(note) && this.userIdsWhoMeMutingRenotes.has(note.user.id)) return true;
+
+		// このソケットで見ているチャンネルがミュートされていたとしても、チャンネルを直接見ている以上は流すようにしたい
+		// ただし、他のミュートしているチャンネルは流さないようにもしたい
+		// ノート自体のチャンネルIDはonNoteでチェックしているので、ここではリノートのチャンネルIDをチェックする
+		if (
+			(note.renote) &&
+			(note.renote.channelId !== this.channelId) &&
+			(note.renote.channelId && this.mutingChannels.has(note.renote.channelId))
+		) {
+			return true;
 		}
+
+		return false;
 	}
 
-	private async emitTypers() {
-		const now = new Date();
-
-		// Remove not typing users
-		for (const [userId, date] of Object.entries(this.typers)) {
-			if (now.getTime() - date.getTime() > 5000) delete this.typers[userId];
-		}
-
-		const users = await Users.packMany(Object.keys(this.typers), null, { detail: false });
-
-		this.send({
-			type: 'typers',
-			body: users,
-		});
-	}
-
+	@bindThis
 	public dispose() {
 		// Unsubscribe events
 		this.subscriber.off('notesStream', this.onNote);
-		this.subscriber.off(`channelStream:${this.channelId}`, this.onEvent);
-
-		clearInterval(this.emitTypersIntervalId);
 	}
 }

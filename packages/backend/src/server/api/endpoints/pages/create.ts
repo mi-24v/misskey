@@ -1,8 +1,17 @@
+/*
+ * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 import ms from 'ms';
-import { Pages, DriveFiles } from '@/models/index.js';
-import { genId } from '@/misc/gen-id.js';
-import { Page } from '@/models/entities/page.js';
-import define from '../../define.js';
+import { Inject, Injectable } from '@nestjs/common';
+import type { DriveFilesRepository, MiDriveFile, PagesRepository } from '@/models/_.js';
+import { pageNameSchema } from '@/models/Page.js';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { PageEntityService } from '@/core/entities/PageEntityService.js';
+import { DI } from '@/di-symbols.js';
+import { PageService } from '@/core/PageService.js';
+import { IdentifiableError } from '@/misc/identifiable-error.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -10,11 +19,13 @@ export const meta = {
 
 	requireCredential: true,
 
+	prohibitMoved: true,
+
 	kind: 'write:pages',
 
 	limit: {
 		duration: ms('1hour'),
-		max: 300,
+		max: 10,
 	},
 
 	res: {
@@ -41,7 +52,7 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		title: { type: 'string' },
-		name: { type: 'string', minLength: 1 },
+		name: { ...pageNameSchema, minLength: 1 },
 		summary: { type: 'string', nullable: true },
 		content: { type: 'array', items: {
 			type: 'object', additionalProperties: true,
@@ -58,46 +69,54 @@ export const paramDef = {
 	required: ['title', 'name', 'content', 'variables', 'script'],
 } as const;
 
-// eslint-disable-next-line import/no-default-export
-export default define(meta, paramDef, async (ps, user) => {
-	let eyeCatchingImage = null;
-	if (ps.eyeCatchingImageId != null) {
-		eyeCatchingImage = await DriveFiles.findOneBy({
-			id: ps.eyeCatchingImageId,
-			userId: user.id,
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.pagesRepository)
+		private pagesRepository: PagesRepository,
+
+		@Inject(DI.driveFilesRepository)
+		private driveFilesRepository: DriveFilesRepository,
+
+		private pageService: PageService,
+		private pageEntityService: PageEntityService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			let eyeCatchingImage: MiDriveFile | null = null;
+			if (ps.eyeCatchingImageId != null) {
+				eyeCatchingImage = await this.driveFilesRepository.findOneBy({
+					id: ps.eyeCatchingImageId,
+					userId: me.id,
+				});
+
+				if (eyeCatchingImage == null) {
+					throw new ApiError(meta.errors.noSuchFile);
+				}
+			}
+
+			await this.pagesRepository.findBy({
+				userId: me.id,
+				name: ps.name,
+			}).then(result => {
+				if (result.length > 0) {
+					throw new ApiError(meta.errors.nameAlreadyExists);
+				}
+			});
+
+			try {
+				const page = await this.pageService.create(me, {
+					...ps,
+					eyeCatchingImage,
+					summary: ps.summary ?? null,
+				});
+
+				return await this.pageEntityService.pack(page);
+			} catch (err) {
+				if (err instanceof IdentifiableError && err.id === '1a79e38e-3d83-4423-845b-a9d83ff93b61') {
+					throw new ApiError(meta.errors.nameAlreadyExists);
+				}
+				throw err;
+			}
 		});
-
-		if (eyeCatchingImage == null) {
-			throw new ApiError(meta.errors.noSuchFile);
-		}
 	}
-
-	await Pages.findBy({
-		userId: user.id,
-		name: ps.name,
-	}).then(result => {
-		if (result.length > 0) {
-			throw new ApiError(meta.errors.nameAlreadyExists);
-		}
-	});
-
-	const page = await Pages.insert(new Page({
-		id: genId(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		title: ps.title,
-		name: ps.name,
-		summary: ps.summary,
-		content: ps.content,
-		variables: ps.variables,
-		script: ps.script,
-		eyeCatchingImageId: eyeCatchingImage ? eyeCatchingImage.id : null,
-		userId: user.id,
-		visibility: 'public',
-		alignCenter: ps.alignCenter,
-		hideTitleWhenPinned: ps.hideTitleWhenPinned,
-		font: ps.font,
-	})).then(x => Pages.findOneByOrFail(x.identifiers[0]));
-
-	return await Pages.pack(page);
-});
+}
