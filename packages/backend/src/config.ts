@@ -108,6 +108,11 @@ type Source = {
 	perUserNotificationsMaxCount?: number;
 	deactivateAntennaThreshold?: number;
 	pidFile: string;
+	notificationExtension?: {
+		baseUrl: string;
+		secret: string;
+		timeoutMs?: number;
+	};
 
 	logging?: {
 		sql?: {
@@ -212,6 +217,11 @@ export type Config = {
 	perUserNotificationsMaxCount: number;
 	deactivateAntennaThreshold: number;
 	pidFile: string;
+	notificationExtension?: {
+		baseUrl: string;
+		secret: string;
+		timeoutMs?: number;
+	};
 };
 
 export type FulltextSearchProvider = 'sqlLike' | 'sqlPgroonga' | 'meilisearch';
@@ -328,6 +338,11 @@ export function loadConfig(): Config {
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
 		pidFile: config.pidFile,
 		logging: config.logging,
+		notificationExtension: config.notificationExtension?.baseUrl && config.notificationExtension?.secret ? {
+			baseUrl: config.notificationExtension.baseUrl.replace(/\/$/, ''),
+			secret: config.notificationExtension.secret,
+			timeoutMs: config.notificationExtension.timeoutMs,
+		} : undefined,
 	};
 }
 
