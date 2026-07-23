@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - miwkey-master
   release:
     types: [published]
   workflow_dispatch:
