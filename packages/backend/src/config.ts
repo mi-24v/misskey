@@ -362,6 +362,11 @@ export function resolveNotificationExtensionConfig(
 		return undefined;
 	}
 
+	if (!isHttpUrl(baseUrl)) {
+		warn('Notification extension base URL is invalid. Set NOTIFICATION_EXTENSION_URL to an absolute HTTP or HTTPS URL to enable it.');
+		return undefined;
+	}
+
 	return {
 		baseUrl: baseUrl.replace(/\/$/, ''),
 		secret,
@@ -371,6 +376,15 @@ export function resolveNotificationExtensionConfig(
 
 function getOptionalConfigValue(value: string | undefined): string | undefined {
 	return value === undefined || value === '' ? undefined : value;
+}
+
+function isHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:';
+	} catch {
+		return false;
+	}
 }
 
 function tryCreateUrl(url: string) {

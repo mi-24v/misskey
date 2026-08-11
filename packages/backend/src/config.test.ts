@@ -109,4 +109,18 @@ describe('resolveNotificationExtensionConfig', () => {
 		expect(warn).toHaveBeenCalledTimes(1);
 		expect(warn.mock.calls[0][0]).not.toContain('env-secret');
 	});
+
+	test('disables the integration and warns when URL is invalid', () => {
+		const warn = jest.fn();
+
+		const result = resolveNotificationExtensionConfig(undefined, {
+			NOTIFICATION_EXTENSION_URL: 'localhost:8080',
+			NOTIFICATION_EXTENSION_SECRET: 'env-secret',
+		}, warn);
+
+		expect(result).toBeUndefined();
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(warn.mock.calls[0][0]).not.toContain('localhost:8080');
+		expect(warn.mock.calls[0][0]).not.toContain('env-secret');
+	});
 });
