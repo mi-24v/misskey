@@ -108,6 +108,11 @@ type Source = {
 	perUserNotificationsMaxCount?: number;
 	deactivateAntennaThreshold?: number;
 	pidFile: string;
+	notificationExtension?: {
+		baseUrl: string;
+		secret: string;
+		timeoutMs?: number;
+	};
 
 	logging?: {
 		sql?: {
@@ -212,6 +217,11 @@ export type Config = {
 	perUserNotificationsMaxCount: number;
 	deactivateAntennaThreshold: number;
 	pidFile: string;
+	notificationExtension?: {
+		baseUrl: string;
+		secret: string;
+		timeoutMs?: number;
+	};
 };
 
 export type FulltextSearchProvider = 'sqlLike' | 'sqlPgroonga' | 'meilisearch';
@@ -328,7 +338,53 @@ export function loadConfig(): Config {
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
 		pidFile: config.pidFile,
 		logging: config.logging,
+		notificationExtension: resolveNotificationExtensionConfig(config.notificationExtension),
 	};
+}
+
+export function resolveNotificationExtensionConfig(
+	source: Source['notificationExtension'] | undefined,
+	env: NodeJS.ProcessEnv = process.env,
+	warn: (message: string) => void = console.warn,
+): Config['notificationExtension'] {
+	const envBaseUrl = getOptionalConfigValue(env.NOTIFICATION_EXTENSION_URL);
+	const envSecret = getOptionalConfigValue(env.NOTIFICATION_EXTENSION_SECRET);
+	const hasEnvironmentConfig = envBaseUrl !== undefined || envSecret !== undefined;
+	const baseUrl = hasEnvironmentConfig ? envBaseUrl : getOptionalConfigValue(source?.baseUrl);
+	const secret = hasEnvironmentConfig ? envSecret : getOptionalConfigValue(source?.secret);
+
+	if (!baseUrl && !secret) {
+		return undefined;
+	}
+
+	if (!baseUrl || !secret) {
+		warn('Notification extension configuration is incomplete. Set both NOTIFICATION_EXTENSION_URL and NOTIFICATION_EXTENSION_SECRET to enable it.');
+		return undefined;
+	}
+
+	if (!isHttpUrl(baseUrl)) {
+		warn('Notification extension base URL is invalid. Set NOTIFICATION_EXTENSION_URL to an absolute HTTP or HTTPS URL to enable it.');
+		return undefined;
+	}
+
+	return {
+		baseUrl: baseUrl.replace(/\/$/, ''),
+		secret,
+		timeoutMs: source?.timeoutMs,
+	};
+}
+
+function getOptionalConfigValue(value: string | undefined): string | undefined {
+	return value === undefined || value === '' ? undefined : value;
+}
+
+function isHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:';
+	} catch {
+		return false;
+	}
 }
 
 function tryCreateUrl(url: string) {
