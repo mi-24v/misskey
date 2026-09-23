@@ -399,3 +399,9 @@ proxyBypassHosts:
 #     # Disable query truncation. If set to true, the full text of the query will be output to the log.
 #     # default: false
 #     disableQueryTruncation: false
+
+# FORK NOTE: notification extension (optional)
+# notificationExtension:
+#   baseUrl: http://localhost:8080
+#   secret: change_me
+#   # timeoutMs: 5000

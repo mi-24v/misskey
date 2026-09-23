@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { createHmac } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 import * as Redis from 'ioredis';
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { In } from 'typeorm';
 import { ReplyError } from 'ioredis';
+import type { Response } from 'node-fetch';
 import { DI } from '@/di-symbols.js';
 import type { UsersRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
@@ -22,6 +24,7 @@ import type { Config } from '@/config.js';
 import { UserListService } from '@/core/UserListService.js';
 import { FilterUnionByProperty, groupedNotificationTypes, obsoleteNotificationTypes } from '@/types.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
+import { HttpRequestService } from '@/core/HttpRequestService.js';
 
 @Injectable()
 export class NotificationService implements OnApplicationShutdown {
@@ -43,6 +46,7 @@ export class NotificationService implements OnApplicationShutdown {
 		private pushNotificationService: PushNotificationService,
 		private cacheService: CacheService,
 		private userListService: UserListService,
+		private httpRequestService: HttpRequestService,
 	) {
 	}
 
@@ -181,6 +185,8 @@ export class NotificationService implements OnApplicationShutdown {
 
 		if (packed == null) return null;
 
+		trackPromise(this.persistNotificationToExtension(notifieeId, notification));
+
 		// Publish notification event
 		this.globalEventService.publishMainStream(notifieeId, 'notification', packed);
 
@@ -235,6 +241,7 @@ export class NotificationService implements OnApplicationShutdown {
 		await Promise.all([
 			this.redisClient.del(`notificationTimeline:${userId}`),
 			this.redisClient.del(`latestReadNotification:${userId}`),
+			this.deleteNotificationsFromExtension(userId),
 		]);
 		this.globalEventService.publishMainStream(userId, 'notificationFlushed');
 	}
@@ -290,7 +297,13 @@ export class NotificationService implements OnApplicationShutdown {
 			}
 
 			if (notificationsRes.length === 0) {
-				return [];
+				return await this.getNotificationsFromExtension(userId, {
+					sinceId,
+					untilId,
+					limit,
+					includeTypes,
+					excludeTypes,
+				});
 			}
 
 			notifications = notificationsRes.map(x => JSON.parse(x[1][1])) as MiNotification[];
@@ -315,6 +328,111 @@ export class NotificationService implements OnApplicationShutdown {
 		}
 
 		return notifications;
+	}
+
+	private createNotificationExtensionToken(secret: string): string {
+		const now = Math.floor(Date.now() / 1000);
+		const header = Buffer.from(JSON.stringify({
+			alg: 'HS256',
+			typ: 'JWT',
+		})).toString('base64url');
+		const payload = Buffer.from(JSON.stringify({
+			iss: 'misskey',
+			sub: 'notification-extension',
+			iat: now,
+			exp: now + 60,
+		})).toString('base64url');
+		const unsigned = `${header}.${payload}`;
+		const signature = createHmac('sha256', secret).update(unsigned).digest('base64url');
+		return `${unsigned}.${signature}`;
+	}
+
+	private async sendNotificationExtensionRequest(
+		method: 'GET' | 'POST' | 'DELETE',
+		path: string,
+		params?: URLSearchParams,
+		body?: unknown,
+	): Promise<Response | null> {
+		const extension = this.config.notificationExtension;
+		if (!extension) return null;
+
+		const url = new URL(`${extension.baseUrl}${path}`);
+		for (const [key, value] of params ?? []) {
+			url.searchParams.append(key, value);
+		}
+
+		try {
+			return await this.httpRequestService.send(url.toString(), {
+				method,
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${this.createNotificationExtensionToken(extension.secret)}`,
+					...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+				},
+				body: body !== undefined ? JSON.stringify(body) : undefined,
+				timeout: extension.timeoutMs ?? 5000,
+				size: 1024 * 256,
+				isLocalAddressAllowed: true,
+			}, {
+				throwErrorWhenResponseNotOk: false,
+				validators: [],
+			});
+		} catch {
+			return null;
+		}
+	}
+
+	private async persistNotificationToExtension(notifieeId: MiUser['id'], notification: MiNotification): Promise<void> {
+		await this.sendNotificationExtensionRequest('POST', '/api/v1/notifications', undefined, {
+			...notification,
+			notifieeId,
+			isRead: false,
+		});
+	}
+
+	private async deleteNotificationsFromExtension(userId: MiUser['id']): Promise<void> {
+		const params = new URLSearchParams();
+		params.append('userId', userId);
+		await this.sendNotificationExtensionRequest('DELETE', '/api/v1/notifications', params);
+	}
+
+	private async getNotificationsFromExtension(
+		userId: MiUser['id'],
+		{
+			sinceId,
+			untilId,
+			limit,
+			includeTypes,
+			excludeTypes,
+		}: {
+			sinceId?: string,
+			untilId?: string,
+			limit: number,
+			includeTypes?: (MiNotification['type'] | string)[],
+			excludeTypes?: (MiNotification['type'] | string)[],
+		},
+	): Promise<MiNotification[]> {
+		const params = new URLSearchParams();
+		params.append('userId', userId);
+		params.append('limit', limit.toString());
+		if (sinceId) params.append('sinceId', sinceId);
+		if (untilId) params.append('untilId', untilId);
+		for (const type of includeTypes ?? []) {
+			params.append('includeTypes', type);
+		}
+		for (const type of excludeTypes ?? []) {
+			params.append('excludeTypes', type);
+		}
+
+		const res = await this.sendNotificationExtensionRequest('GET', '/api/v1/notifications', params);
+		if (!res?.ok) return [];
+
+		try {
+			const notifications = await res.json() as unknown;
+			return Array.isArray(notifications) ? notifications as MiNotification[] : [];
+		} catch {
+			return [];
+		}
 	}
 
 	@bindThis
