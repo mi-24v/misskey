@@ -32,6 +32,12 @@ dispatch, but the selected branch supplies the workflow implementation.
 
 Alternatively, with an authenticated GitHub CLI:
 
+The branch name below is an example. Replace `feature/notification-extension-server`
+with the branch you want to validate, and push its latest commits to GitHub before
+running the command. `--ref` selects the remote branch to build; it does not use
+your local checkout or unpushed commits. The selected branch must contain the
+candidate-publishing workflow described here.
+
 ```bash
 gh workflow run docker.yml --repo mi-24v/misskey --ref feature/notification-extension-server
 ```
