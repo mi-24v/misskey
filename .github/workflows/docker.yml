@@ -12,12 +12,14 @@ on:
 env:
   TAGS: |
     type=ref,event=pr
-    type=ref,event=branch
-    type=sha,prefix=sha-
-    type=raw,value=latest,enable={{is_default_branch}}
-    type=semver,pattern={{version}}
-    type=semver,pattern={{major}}.{{minor}}
-    type=semver,pattern={{major}}
+    type=ref,event=branch,enable=${{ github.event_name != 'workflow_dispatch' }}
+    type=sha,prefix=sha-,enable=${{ github.event_name != 'workflow_dispatch' }}
+    type=raw,value=candidate-${{ github.sha }},enable=${{ github.event_name == 'workflow_dispatch' }}
+    type=raw,value=latest,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/miwkey-main' }}
+    type=semver,pattern={{version}},enable=${{ github.event_name != 'workflow_dispatch' }}
+    type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name != 'workflow_dispatch' }}
+    type=semver,pattern={{major}},enable=${{ github.event_name != 'workflow_dispatch' }}
+  FLAVOR: latest=${{ github.event_name == 'workflow_dispatch' && 'false' || 'auto' }}
 
 permissions:
   contents: read
@@ -49,16 +51,13 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Prepare image name
-        run: |
-          repository="${GITHUB_REPOSITORY,,}"
-          echo "REGISTRY_IMAGE=ghcr.io/${repository}" >> "$GITHUB_ENV"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: ${{ env.TAGS }}
+          flavor: ${{ env.FLAVOR }}
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -111,6 +110,10 @@ jobs:
     needs:
       - build
     steps:
+      - name: Prepare image name
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          echo "REGISTRY_IMAGE=ghcr.io/${repository}" >> "$GITHUB_ENV"
       - name: Download digests
         uses: actions/download-artifact@v7
         with:
@@ -125,6 +128,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: ${{ env.TAGS }}
+          flavor: ${{ env.FLAVOR }}
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
