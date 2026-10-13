@@ -10,26 +10,13 @@ import type * as Redis from 'ioredis';
 import type { Response } from 'node-fetch';
 import type { Config } from '@/config.js';
 import { NotificationService } from '@/core/NotificationService.js';
-import type { HttpRequestService } from '@/core/HttpRequestService.js';
+import type { NotificationExtensionClient } from '@/core/NotificationExtensionClient.js';
 import { allSettled } from '@/misc/promise-tracker.js';
 import type { MiNotification } from '@/models/Notification.js';
 
 type AsyncMock = jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 type SyncMock = jest.Mock<(...args: unknown[]) => unknown>;
-type ExtensionSendCall = [
-	url: string,
-	args: {
-		method?: string;
-		body?: string;
-		headers?: Record<string, string>;
-		timeout?: number;
-		size?: number;
-		isLocalAddressAllowed?: boolean;
-	},
-	extra: {
-		throwErrorWhenResponseNotOk: boolean;
-	},
-];
+type ExtensionRequestCall = Parameters<NotificationExtensionClient['request']>;
 
 function response(json?: unknown, ok = true): Response {
 	return {
@@ -42,7 +29,7 @@ function response(json?: unknown, ok = true): Response {
 
 describe('NotificationService notification extension integration', () => {
 	let redisClient: jest.Mocked<Redis.Redis>;
-	let httpRequestService: jest.Mocked<HttpRequestService>;
+	let notificationExtensionClient: jest.Mocked<NotificationExtensionClient>;
 	let notificationEntityService: {
 		pack: AsyncMock;
 	};
@@ -65,9 +52,9 @@ describe('NotificationService notification extension integration', () => {
 		membersCache: { fetch: AsyncMock };
 	};
 
-	function firstSendCall(): ExtensionSendCall {
-		expect(httpRequestService.send).toHaveBeenCalled();
-		return httpRequestService.send.mock.calls[0] as ExtensionSendCall;
+	function firstRequestCall(): ExtensionRequestCall {
+		expect(notificationExtensionClient.request).toHaveBeenCalled();
+		return notificationExtensionClient.request.mock.calls[0];
 	}
 
 	function createService(configOverride: Partial<Config> = {}) {
@@ -92,7 +79,7 @@ describe('NotificationService notification extension integration', () => {
 			pushNotificationService as any,
 			cacheService as any,
 			userListService as any,
-			httpRequestService,
+			notificationExtensionClient,
 		);
 	}
 
@@ -105,9 +92,9 @@ describe('NotificationService notification extension integration', () => {
 			set: jest.fn(),
 			del: jest.fn(),
 			} as unknown as jest.Mocked<Redis.Redis>;
-			httpRequestService = {
-				send: jest.fn(),
-			} as unknown as jest.Mocked<HttpRequestService>;
+			notificationExtensionClient = {
+				request: jest.fn(),
+			} as unknown as jest.Mocked<NotificationExtensionClient>;
 			notificationEntityService = {
 				pack: jest.fn<(...args: unknown[]) => Promise<unknown>>(),
 			};
@@ -146,7 +133,7 @@ describe('NotificationService notification extension integration', () => {
 			reaction: ':test:',
 		} satisfies MiNotification;
 		redisClient.xrevrange.mockResolvedValue([]);
-		httpRequestService.send.mockResolvedValue(response([notification]));
+		notificationExtensionClient.request.mockResolvedValue(response([notification]));
 		const service = createService();
 
 		const result = await service.getNotifications('target-user-id', {
@@ -158,21 +145,16 @@ describe('NotificationService notification extension integration', () => {
 		});
 
 		expect(result).toEqual([notification]);
-		expect(httpRequestService.send).toHaveBeenCalledTimes(1);
-		const [url, args, extra] = firstSendCall();
-		const parsedUrl = new URL(url);
-		expect(`${parsedUrl.origin}${parsedUrl.pathname}`).toBe('https://notification-extension.example/api/v1/notifications');
-		expect(parsedUrl.searchParams.get('userId')).toBe('target-user-id');
-		expect(parsedUrl.searchParams.get('sinceId')).toBe('since-id');
-		expect(parsedUrl.searchParams.get('untilId')).toBe('until-id');
-		expect(parsedUrl.searchParams.get('limit')).toBe('10');
-		expect(parsedUrl.searchParams.getAll('includeTypes')).toEqual(['reaction']);
-		expect(parsedUrl.searchParams.getAll('excludeTypes')).toEqual(['follow']);
-		expect(args.method).toBe('GET');
-		expect(args.timeout).toBe(1234);
-		expect(args.isLocalAddressAllowed).toBe(true);
-		expect(args.headers?.Authorization).toMatch(/^Bearer [^.]+\.[^.]+\.[^.]+$/);
-		expect(extra.throwErrorWhenResponseNotOk).toBe(false);
+		expect(notificationExtensionClient.request).toHaveBeenCalledTimes(1);
+		const [method, params, body] = firstRequestCall();
+		expect(method).toBe('GET');
+		expect(params?.get('userId')).toBe('target-user-id');
+		expect(params?.get('sinceId')).toBe('since-id');
+		expect(params?.get('untilId')).toBe('until-id');
+		expect(params?.get('limit')).toBe('10');
+		expect(params?.getAll('includeTypes')).toEqual(['reaction']);
+		expect(params?.getAll('excludeTypes')).toEqual(['follow']);
+		expect(body).toBeUndefined();
 	});
 
 	test('replicates created notifications to the notification extension', async () => {
@@ -181,45 +163,35 @@ describe('NotificationService notification extension integration', () => {
 		redisClient.xadd.mockResolvedValue('2000-2');
 		redisClient.get.mockResolvedValue(null);
 		notificationEntityService.pack.mockResolvedValue({ id: 'notification-id' });
-		httpRequestService.send.mockResolvedValue(response());
+		notificationExtensionClient.request.mockResolvedValue(response());
 		const service = createService();
 
 		service.createNotification('target-user-id', 'test', {});
 		await allSettled();
 
-		expect(httpRequestService.send).toHaveBeenCalledTimes(1);
-		const [url, args, extra] = firstSendCall();
-		expect(url).toBe('https://notification-extension.example/api/v1/notifications');
-		expect(args.method).toBe('POST');
-		expect(args.timeout).toBe(1234);
-		expect(args.isLocalAddressAllowed).toBe(true);
-		expect(args.headers?.Authorization).toMatch(/^Bearer [^.]+\.[^.]+\.[^.]+$/);
-		expect(args.headers?.['Content-Type']).toBe('application/json');
-		expect(JSON.parse(args.body as string)).toMatchObject({
+		expect(notificationExtensionClient.request).toHaveBeenCalledTimes(1);
+		const [method, params, body] = firstRequestCall();
+		expect(method).toBe('POST');
+		expect(params).toBeUndefined();
+		expect(body).toMatchObject({
 			id: 'notification-id',
 			type: 'test',
 			notifieeId: 'target-user-id',
 			isRead: false,
 		});
-		expect(extra.throwErrorWhenResponseNotOk).toBe(false);
 	});
 
 	test('deletes persisted notifications for the user when notifications are flushed', async () => {
 		redisClient.del.mockResolvedValue(1);
-		httpRequestService.send.mockResolvedValue(response());
+		notificationExtensionClient.request.mockResolvedValue(response());
 		const service = createService();
 
 		await service.flushAllNotifications('target-user-id');
 
-		expect(httpRequestService.send).toHaveBeenCalledTimes(1);
-		const [url, args, extra] = firstSendCall();
-		const parsedUrl = new URL(url);
-		expect(`${parsedUrl.origin}${parsedUrl.pathname}`).toBe('https://notification-extension.example/api/v1/notifications');
-		expect(parsedUrl.searchParams.get('userId')).toBe('target-user-id');
-		expect(args.method).toBe('DELETE');
-		expect(args.timeout).toBe(1234);
-		expect(args.isLocalAddressAllowed).toBe(true);
-		expect(args.headers?.Authorization).toMatch(/^Bearer [^.]+\.[^.]+\.[^.]+$/);
-		expect(extra.throwErrorWhenResponseNotOk).toBe(false);
+		expect(notificationExtensionClient.request).toHaveBeenCalledTimes(1);
+		const [method, params, body] = firstRequestCall();
+		expect(method).toBe('DELETE');
+		expect(params?.get('userId')).toBe('target-user-id');
+		expect(body).toBeUndefined();
 	});
 });

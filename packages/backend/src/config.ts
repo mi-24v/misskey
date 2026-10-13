@@ -362,13 +362,14 @@ export function resolveNotificationExtensionConfig(
 		return undefined;
 	}
 
-	if (!isHttpUrl(baseUrl)) {
-		warn('Notification extension base URL is invalid. Set NOTIFICATION_EXTENSION_URL to an absolute HTTP or HTTPS URL to enable it.');
+	const origin = parseHttpOrigin(baseUrl);
+	if (origin === undefined) {
+		warn('Notification extension base URL is invalid. Set NOTIFICATION_EXTENSION_URL to an HTTP or HTTPS origin without credentials, path, query, or fragment to enable it.');
 		return undefined;
 	}
 
 	return {
-		baseUrl: baseUrl.replace(/\/$/, ''),
+		baseUrl: origin,
 		secret,
 		timeoutMs: source?.timeoutMs,
 	};
@@ -378,13 +379,20 @@ function getOptionalConfigValue(value: string | undefined): string | undefined {
 	return value === undefined || value === '' ? undefined : value;
 }
 
-function isHttpUrl(value: string): boolean {
+// 認証情報・パス・query・fragment を含まない http(s) の origin だけを受け付ける
+function parseHttpOrigin(value: string): string | undefined {
+	let url: URL;
 	try {
-		const url = new URL(value);
-		return url.protocol === 'http:' || url.protocol === 'https:';
+		url = new URL(value);
 	} catch {
-		return false;
+		return undefined;
 	}
+
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+	if (url.username !== '' || url.password !== '') return undefined;
+	if (url.pathname !== '/' || url.search !== '' || url.hash !== '') return undefined;
+
+	return url.origin;
 }
 
 function tryCreateUrl(url: string) {
