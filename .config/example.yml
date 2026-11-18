@@ -401,6 +401,9 @@ proxyBypassHosts:
 #     disableQueryTruncation: false
 
 # FORK NOTE: notification extension (optional)
+# baseUrl is an origin only (scheme://host[:port]) without credentials, path,
+# query, or fragment. Use https in production; http is for local development only.
+# Requests use a dedicated agent that bypasses `proxy` and does not follow redirects.
 # notificationExtension:
 #   baseUrl: http://localhost:8080
 #   secret: change_me

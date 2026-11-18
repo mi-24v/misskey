@@ -34,6 +34,7 @@ import { FetchInstanceMetadataService } from './FetchInstanceMetadataService.js'
 import { GlobalEventService } from './GlobalEventService.js';
 import { HashtagService } from './HashtagService.js';
 import { HttpRequestService } from './HttpRequestService.js';
+import { NotificationExtensionClient } from './NotificationExtensionClient.js';
 import { IdService } from './IdService.js';
 import { ImageProcessingService } from './ImageProcessingService.js';
 import { SystemAccountService } from './SystemAccountService.js';
@@ -178,6 +179,7 @@ const $FetchInstanceMetadataService: Provider = { provide: 'FetchInstanceMetadat
 const $GlobalEventService: Provider = { provide: 'GlobalEventService', useExisting: GlobalEventService };
 const $HashtagService: Provider = { provide: 'HashtagService', useExisting: HashtagService };
 const $HttpRequestService: Provider = { provide: 'HttpRequestService', useExisting: HttpRequestService };
+const $NotificationExtensionClient: Provider = { provide: 'NotificationExtensionClient', useExisting: NotificationExtensionClient };
 const $IdService: Provider = { provide: 'IdService', useExisting: IdService };
 const $ImageProcessingService: Provider = { provide: 'ImageProcessingService', useExisting: ImageProcessingService };
 const $InternalStorageService: Provider = { provide: 'InternalStorageService', useExisting: InternalStorageService };
@@ -331,6 +333,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		GlobalEventService,
 		HashtagService,
 		HttpRequestService,
+		NotificationExtensionClient,
 		IdService,
 		ImageProcessingService,
 		InternalStorageService,
@@ -480,6 +483,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		$GlobalEventService,
 		$HashtagService,
 		$HttpRequestService,
+		$NotificationExtensionClient,
 		$IdService,
 		$ImageProcessingService,
 		$InternalStorageService,
@@ -630,6 +634,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		GlobalEventService,
 		HashtagService,
 		HttpRequestService,
+		NotificationExtensionClient,
 		IdService,
 		ImageProcessingService,
 		InternalStorageService,
@@ -778,6 +783,7 @@ const $ApQuestionService: Provider = { provide: 'ApQuestionService', useExisting
 		$GlobalEventService,
 		$HashtagService,
 		$HttpRequestService,
+		$NotificationExtensionClient,
 		$IdService,
 		$ImageProcessingService,
 		$InternalStorageService,

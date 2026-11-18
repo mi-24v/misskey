@@ -3,13 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createHmac } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 import * as Redis from 'ioredis';
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { In } from 'typeorm';
 import { ReplyError } from 'ioredis';
-import type { Response } from 'node-fetch';
 import { DI } from '@/di-symbols.js';
 import type { UsersRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
@@ -24,7 +22,7 @@ import type { Config } from '@/config.js';
 import { UserListService } from '@/core/UserListService.js';
 import { FilterUnionByProperty, groupedNotificationTypes, obsoleteNotificationTypes } from '@/types.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
-import { HttpRequestService } from '@/core/HttpRequestService.js';
+import { NotificationExtensionClient } from '@/core/NotificationExtensionClient.js';
 
 @Injectable()
 export class NotificationService implements OnApplicationShutdown {
@@ -46,7 +44,7 @@ export class NotificationService implements OnApplicationShutdown {
 		private pushNotificationService: PushNotificationService,
 		private cacheService: CacheService,
 		private userListService: UserListService,
-		private httpRequestService: HttpRequestService,
+		private notificationExtensionClient: NotificationExtensionClient,
 	) {
 	}
 
@@ -330,60 +328,8 @@ export class NotificationService implements OnApplicationShutdown {
 		return notifications;
 	}
 
-	private createNotificationExtensionToken(secret: string): string {
-		const now = Math.floor(Date.now() / 1000);
-		const header = Buffer.from(JSON.stringify({
-			alg: 'HS256',
-			typ: 'JWT',
-		})).toString('base64url');
-		const payload = Buffer.from(JSON.stringify({
-			iss: 'misskey',
-			sub: 'notification-extension',
-			iat: now,
-			exp: now + 60,
-		})).toString('base64url');
-		const unsigned = `${header}.${payload}`;
-		const signature = createHmac('sha256', secret).update(unsigned).digest('base64url');
-		return `${unsigned}.${signature}`;
-	}
-
-	private async sendNotificationExtensionRequest(
-		method: 'GET' | 'POST' | 'DELETE',
-		path: string,
-		params?: URLSearchParams,
-		body?: unknown,
-	): Promise<Response | null> {
-		const extension = this.config.notificationExtension;
-		if (!extension) return null;
-
-		const url = new URL(`${extension.baseUrl}${path}`);
-		for (const [key, value] of params ?? []) {
-			url.searchParams.append(key, value);
-		}
-
-		try {
-			return await this.httpRequestService.send(url.toString(), {
-				method,
-				headers: {
-					Accept: 'application/json',
-					Authorization: `Bearer ${this.createNotificationExtensionToken(extension.secret)}`,
-					...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-				},
-				body: body !== undefined ? JSON.stringify(body) : undefined,
-				timeout: extension.timeoutMs ?? 5000,
-				size: 1024 * 256,
-				isLocalAddressAllowed: true,
-			}, {
-				throwErrorWhenResponseNotOk: false,
-				validators: [],
-			});
-		} catch {
-			return null;
-		}
-	}
-
 	private async persistNotificationToExtension(notifieeId: MiUser['id'], notification: MiNotification): Promise<void> {
-		await this.sendNotificationExtensionRequest('POST', '/api/v1/notifications', undefined, {
+		await this.notificationExtensionClient.request('POST', undefined, {
 			...notification,
 			notifieeId,
 			isRead: false,
@@ -393,7 +339,7 @@ export class NotificationService implements OnApplicationShutdown {
 	private async deleteNotificationsFromExtension(userId: MiUser['id']): Promise<void> {
 		const params = new URLSearchParams();
 		params.append('userId', userId);
-		await this.sendNotificationExtensionRequest('DELETE', '/api/v1/notifications', params);
+		await this.notificationExtensionClient.request('DELETE', params);
 	}
 
 	private async getNotificationsFromExtension(
@@ -424,7 +370,7 @@ export class NotificationService implements OnApplicationShutdown {
 			params.append('excludeTypes', type);
 		}
 
-		const res = await this.sendNotificationExtensionRequest('GET', '/api/v1/notifications', params);
+		const res = await this.notificationExtensionClient.request('GET', params);
 		if (!res?.ok) return [];
 
 		try {
